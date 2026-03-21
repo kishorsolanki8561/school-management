@@ -3,9 +3,9 @@
 *.suo
 *.userosscache
 *.sln.docstates
-bin/
-obj/
-out/
+**/bin/
+**/obj/
+**/out/
 .vs/
 .vscode/
 *.log
@@ -29,7 +29,7 @@ coverage/
 *.trx
 
 # Publish
-publish/
+**/publish/
 
 # Claude Code
 .claude/

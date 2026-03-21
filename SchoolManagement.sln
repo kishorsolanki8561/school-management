@@ -15,7 +15,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SchoolManagement.Services",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SchoolManagement.Tests", "tests\SchoolManagement.Tests\SchoolManagement.Tests.csproj", "{F6A7B8C9-D0E1-2345-F012-456789012345}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SchoolManagement.Seeding", "SchoolManagement.Seeding\SchoolManagement.Seeding.csproj", "{EA7102CF-A31B-4BC0-97C5-CF41FDD18D15}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SchoolManagement.Seeding", "src\SchoolManagement.Seeding\SchoolManagement.Seeding.csproj", "{EA7102CF-A31B-4BC0-97C5-CF41FDD18D15}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

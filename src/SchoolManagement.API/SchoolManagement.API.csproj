@@ -21,6 +21,6 @@
     <ProjectReference Include="..\SchoolManagement.Common\SchoolManagement.Common.csproj" />
     <ProjectReference Include="..\SchoolManagement.DbInfrastructure\SchoolManagement.DbInfrastructure.csproj" />
     <ProjectReference Include="..\SchoolManagement.Services\SchoolManagement.Services.csproj" />
-    <ProjectReference Include="..\..\SchoolManagement.Seeding\SchoolManagement.Seeding.csproj" />
+    <ProjectReference Include="..\SchoolManagement.Seeding\SchoolManagement.Seeding.csproj" />
   </ItemGroup>
 </Project>

@@ -7,8 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\src\SchoolManagement.DbInfrastructure\SchoolManagement.DbInfrastructure.csproj" />
-    <ProjectReference Include="..\src\SchoolManagement.Models\SchoolManagement.Models.csproj" />
+    <ProjectReference Include="..\SchoolManagement.DbInfrastructure\SchoolManagement.DbInfrastructure.csproj" />
+    <ProjectReference Include="..\SchoolManagement.Models\SchoolManagement.Models.csproj" />
   </ItemGroup>
 
 </Project>
