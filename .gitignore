@@ -1,0 +1,35 @@
+## .NET Core
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+bin/
+obj/
+out/
+.vs/
+.vscode/
+*.log
+*.tmp
+*.cache
+.DS_Store
+Thumbs.db
+
+# NuGet
+*.nupkg
+packages/
+nuget.config
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Test results
+TestResults/
+coverage/
+*.coveragexml
+*.trx
+
+# Publish
+publish/
+
+# Claude Code
+.claude/
