@@ -66,4 +66,27 @@ public sealed class AuthController : ControllerBase
         await _authService.LogoutAsync(refreshToken, cancellationToken);
         return Ok(ApiResponse<bool>.Ok(true, HttpContext.TraceIdentifier));
     }
+
+    /// <summary>Request a password reset email.</summary>
+    [HttpPost("forgot-password")]
+    [AllowAnonymous]
+    [SwaggerOperation(Summary = "Forgot Password", Tags = new[] { "Auth" })]
+    [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request, CancellationToken cancellationToken)
+    {
+        await _authService.ForgotPasswordAsync(request, cancellationToken);
+        return Ok(ApiResponse<string>.Ok(SchoolManagement.Common.Constants.AppMessages.Auth.PasswordResetEmailSent, HttpContext.TraceIdentifier));
+    }
+
+    /// <summary>Reset password using a valid reset token.</summary>
+    [HttpPost("reset-password")]
+    [AllowAnonymous]
+    [SwaggerOperation(Summary = "Reset Password", Tags = new[] { "Auth" })]
+    [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request, CancellationToken cancellationToken)
+    {
+        await _authService.ResetPasswordAsync(request, cancellationToken);
+        return Ok(ApiResponse<string>.Ok(SchoolManagement.Common.Constants.AppMessages.Auth.PasswordResetSuccess, HttpContext.TraceIdentifier));
+    }
 }

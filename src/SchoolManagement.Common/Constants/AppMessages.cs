@@ -10,6 +10,9 @@ public static class AppMessages
         public const string InvalidTokenAlgorithm = "Invalid token algorithm.";
         public const string RefreshTokenInvalid = "Invalid or expired refresh token.";
         public const string RefreshTokenExpired = "Refresh token has expired.";
+        public const string PasswordResetEmailSent = "If the email is registered, a password reset link has been sent.";
+        public const string ResetTokenInvalid = "Invalid or expired password reset token.";
+        public const string PasswordResetSuccess = "Password has been reset successfully.";
     }
 
     public static class General

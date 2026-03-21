@@ -4,6 +4,7 @@ using SchoolManagement.Common.Configuration;
 using SchoolManagement.Common.Extensions;
 using SchoolManagement.DbInfrastructure.Extensions;
 using SchoolManagement.Models.Mappings;
+using SchoolManagement.Seeding.Extensions;
 using SchoolManagement.Services.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,6 +20,9 @@ builder.Services.AddDbInfrastructure(builder.Configuration);
 
 // ── Application services (scoped business logic) ──────────────────────────────
 builder.Services.AddApplicationServices();
+
+// ── Data seeding (idempotent — runs on every startup) ─────────────────────────
+builder.Services.AddSeeding();
 
 // ── AutoMapper ────────────────────────────────────────────────────────────────
 builder.Services.AddAutoMapper(typeof(AutoMapperProfile));
@@ -45,6 +49,9 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// ── Seed default data (roles etc.) — idempotent, safe every startup ───────────
+await app.SeedDatabaseAsync();
 
 // ── Middleware pipeline ────────────────────────────────────────────────────────
 

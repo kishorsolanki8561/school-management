@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SchoolManagement.Common.Configuration;
 using SchoolManagement.Common.Constants;
+using SchoolManagement.Common.Services;
 using SchoolManagement.Common.Utilities;
 using SchoolManagement.DbInfrastructure.Context;
 using SchoolManagement.Models.DTOs.Auth;
@@ -17,12 +18,16 @@ namespace SchoolManagement.Services.Implementations;
 public sealed class AuthService : IAuthService
 {
     private readonly SchoolManagementDbContext _context;
+    private readonly IEmailService _emailService;
     private readonly JwtSettings _jwtSettings;
+    private readonly EmailSettings _emailSettings;
 
-    public AuthService(SchoolManagementDbContext context)
+    public AuthService(SchoolManagementDbContext context, IEmailService emailService)
     {
         _context = context;
+        _emailService = emailService;
         _jwtSettings = InitializeConfiguration.JwtSettings;
+        _emailSettings = InitializeConfiguration.EmailSettings;
     }
 
     public async Task<LoginResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
@@ -98,6 +103,69 @@ public sealed class AuthService : IAuthService
             token.IsRevoked = true;
             await _context.SaveChangesAsync(cancellationToken);
         }
+    }
+
+    public async Task ForgotPasswordAsync(ForgotPasswordRequest request, CancellationToken cancellationToken = default)
+    {
+        // Always return same response to prevent email enumeration
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.Email == request.Email && !u.IsDeleted && u.IsActive, cancellationToken);
+
+        if (user is null)
+            return;
+
+        // Invalidate any existing unused tokens for this user
+        var existingTokens = await _context.PasswordResetTokens
+            .Where(t => t.UserId == user.Id && !t.IsUsed)
+            .ToListAsync(cancellationToken);
+
+        foreach (var t in existingTokens)
+            t.IsUsed = true;
+
+        // Generate a new secure token
+        var tokenBytes = new byte[64];
+        RandomNumberGenerator.Fill(tokenBytes);
+        var tokenValue = Convert.ToBase64String(tokenBytes);
+
+        var resetToken = new PasswordResetToken
+        {
+            UserId = user.Id,
+            Token = tokenValue,
+            ExpiresAt = DateTime.UtcNow.AddHours(_emailSettings.TokenExpirationHours)
+        };
+
+        await _context.PasswordResetTokens.AddAsync(resetToken, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var resetUrl = $"{_emailSettings.ResetPasswordBaseUrl}?token={Uri.EscapeDataString(tokenValue)}";
+        await _emailService.SendPasswordResetEmailAsync(user.Email, user.Username, resetUrl, cancellationToken);
+    }
+
+    public async Task ResetPasswordAsync(ResetPasswordRequest request, CancellationToken cancellationToken = default)
+    {
+        var resetToken = await _context.PasswordResetTokens
+            .Include(t => t.User)
+            .FirstOrDefaultAsync(t => t.Token == request.Token && !t.IsUsed, cancellationToken)
+            ?? throw new InvalidOperationException(AppMessages.Auth.ResetTokenInvalid);
+
+        if (DateTimeUtility.IsExpired(resetToken.ExpiresAt))
+            throw new InvalidOperationException(AppMessages.Auth.ResetTokenInvalid);
+
+        var user = resetToken.User!;
+        user.PasswordHash = HashingUtility.HashPassword(request.NewPassword);
+
+        // Mark token as used
+        resetToken.IsUsed = true;
+
+        // Revoke all refresh tokens so existing sessions are invalidated
+        var refreshTokens = await _context.RefreshTokens
+            .Where(rt => rt.UserId == user.Id && !rt.IsRevoked)
+            .ToListAsync(cancellationToken);
+
+        foreach (var rt in refreshTokens)
+            rt.IsRevoked = true;
+
+        await _context.SaveChangesAsync(cancellationToken);
     }
 
     private async Task<LoginResponse> GenerateTokensAsync(User user, CancellationToken cancellationToken)

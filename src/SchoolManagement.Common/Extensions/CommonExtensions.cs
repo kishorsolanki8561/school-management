@@ -15,6 +15,7 @@ public static class CommonExtensions
     {
         services.AddScoped<IRequestContext, RequestContext>();
         services.AddScoped<IEncryptionService, EncryptionService>();
+        services.AddScoped<IEmailService, EmailService>();
         services.AddSingleton<IIpLocationResolver, IpLocationResolver>();
         services.AddSingleton<IFilesValidator, FilesValidator>();
         services.AddSingleton<IFilePathHelper, FilePathHelper>();
