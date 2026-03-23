@@ -17,6 +17,7 @@ public sealed class ExceptionHandlingMiddlewareTests
     {
         var context = new DefaultHttpContext();
         context.Response.Body = new MemoryStream();
+        context.Request.Body  = new MemoryStream(); // seekable — required for request-body capture
         if (serviceProvider is not null)
             context.RequestServices = serviceProvider;
         return context;
@@ -90,17 +91,46 @@ public sealed class ExceptionHandlingMiddlewareTests
         context.Response.StatusCode.Should().Be(400);
     }
 
-    private static IServiceProvider BuildServiceProvider()
+    [Fact]
+    public async Task InvokeAsync_ShouldLogCorrectHttpMethodAndStatusCode_OnException()
     {
+        ErrorLogEntry? captured = null;
         var errorLogMock = new Mock<IErrorLogService>();
-        errorLogMock.Setup(s => s.LogAsync(It.IsAny<Exception>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+        errorLogMock
+            .Setup(s => s.LogAsync(It.IsAny<ErrorLogEntry>()))
+            .Callback<ErrorLogEntry>(e => captured = e)
             .Returns(Task.CompletedTask);
+
+        var middleware = new ExceptionHandlingMiddleware(
+            _ => throw new KeyNotFoundException("Missing"));
+
+        var context = CreateContext(BuildServiceProvider(errorLogMock));
+        context.Request.Method = "DELETE";
+
+        await middleware.InvokeAsync(context);
+
+        captured.Should().NotBeNull();
+        captured!.StatusCode.Should().Be(404);
+        captured.HttpMethod.Should().Be("DELETE");
+    }
+
+    // ── Helpers ────────────────────────────────────────────────────────────────
+
+    private static IServiceProvider BuildServiceProvider(Mock<IErrorLogService>? errorLogMock = null)
+    {
+        if (errorLogMock is null)
+        {
+            // Default no-op mock — only configured when caller hasn't provided a custom one.
+            // If a mock is passed in, preserve its existing setup (e.g. Callback) unchanged.
+            errorLogMock = new Mock<IErrorLogService>();
+            errorLogMock
+                .Setup(s => s.LogAsync(It.IsAny<ErrorLogEntry>()))
+                .Returns(Task.CompletedTask);
+        }
 
         var scopeMock = new Mock<IServiceScope>();
         scopeMock.Setup(s => s.ServiceProvider.GetService(typeof(IErrorLogService)))
             .Returns(errorLogMock.Object);
-        scopeMock.Setup(s => s.ServiceProvider.GetService(typeof(IRequestContext)))
-            .Returns(new RequestContext());
 
         var factoryMock = new Mock<IServiceScopeFactory>();
         factoryMock.Setup(f => f.CreateScope()).Returns(scopeMock.Object);
@@ -108,6 +138,11 @@ public sealed class ExceptionHandlingMiddlewareTests
         var providerMock = new Mock<IServiceProvider>();
         providerMock.Setup(p => p.GetService(typeof(IServiceScopeFactory)))
             .Returns(factoryMock.Object);
+
+        // IRequestContext is resolved from the ORIGINAL request scope (not the new isolated scope)
+        // so it must be registered on the root provider mock.
+        providerMock.Setup(p => p.GetService(typeof(IRequestContext)))
+            .Returns(new RequestContext());
 
         return providerMock.Object;
     }
