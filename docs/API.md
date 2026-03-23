@@ -360,6 +360,71 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
 
 ---
 
+## AuditLog Module
+
+All endpoints require auth (`Bearer`). Returns paginated `AuditLog` records.
+
+### GET `/audit-log/entity/{entityName}/{entityId}`
+Get audit history for a specific record (e.g., all changes to Country with Id 5).
+
+**Query Parameters** — same paging params as `/country` (`page`, `pageSize`, `search`).
+
+**Response `data`** — `PagedResult<AuditLog>`
+```json
+{
+  "items": [
+    {
+      "id": 1,
+      "entityName": "Country",
+      "entityId": "5",
+      "action": "Updated",
+      "oldData": "{...}",
+      "newData": "{...}",
+      "modifiedBy": "user-id",
+      "createdBy": "admin",
+      "ipAddress": "192.168.1.1",
+      "location": "Localhost",
+      "screenName": "Country Management",
+      "tableName": "Countries",
+      "batchId": "3fa85f64-...",
+      "parentAuditLogId": null,
+      "timestamp": "2026-03-23T07:00:00Z"
+    }
+  ],
+  "totalCount": 1,
+  "page": 1,
+  "pageSize": 10,
+  "totalPages": 1
+}
+```
+
+---
+
+### GET `/audit-log/user/{userId}`
+Get all audit entries created by a specific user.
+
+**Query Parameters** — `page`, `pageSize`.
+
+---
+
+### GET `/audit-log/screen/{screenName}`
+Get all audit entries triggered from a specific screen (matched against `ScreenName` column).
+
+**Example:** `/audit-log/screen/Country%20Management`
+
+**Query Parameters** — `page`, `pageSize`.
+
+---
+
+### GET `/audit-log/table/{tableName}`
+Get all audit entries for a specific DB table (matched against `TableName` column).
+
+**Example:** `/audit-log/table/Countries`
+
+**Query Parameters** — `page`, `pageSize`.
+
+---
+
 ## Endpoint Summary
 
 | Method | Route | Auth | Description |
@@ -388,3 +453,7 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
 | GET | `/city` | Yes | List cities |
 | GET | `/city/by-state/{id}` | Yes | Cities by state |
 | GET | `/encryption/public-key` | No | Get RSA public key |
+| GET | `/audit-log/entity/{name}/{id}` | Yes | Audit history for a record |
+| GET | `/audit-log/user/{userId}` | Yes | Audit entries by user |
+| GET | `/audit-log/screen/{screenName}` | Yes | Audit entries by screen |
+| GET | `/audit-log/table/{tableName}` | Yes | Audit entries by table |

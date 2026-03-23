@@ -249,8 +249,9 @@ Dapper queries include `WHERE IsDeleted = 0` explicitly in their SQL constants.
 ## Database Seeding
 
 **Files:**
-- `src/SchoolManagement.Seeding/Seeding/CountrySeeder.cs`
 - `src/SchoolManagement.Seeding/Seeding/RoleSeeder.cs`
+- `src/SchoolManagement.Seeding/Seeding/UserSeeder.cs`
+- `src/SchoolManagement.Seeding/Seeding/CountrySeeder.cs`
 - `src/SchoolManagement.Seeding/Seeding/DatabaseSeeder.cs`
 
 Seeders implement `ISeeder`:
@@ -263,7 +264,15 @@ public interface ISeeder
 }
 ```
 
-`DatabaseSeeder` runs all registered `ISeeder` implementations at startup. Each seeder checks `IsSeededAsync()` first — if data already exists, it skips. This makes seeding idempotent and safe to run on every startup.
+`DatabaseSeeder` runs all registered `ISeeder` implementations at startup in this order:
+
+| Seeder | Seeds | Check |
+|---|---|---|
+| `RoleSeeder` | Default roles (SuperAdmin, SchoolAdmin, Supervisor, Teacher, Student) | `Roles` table not empty |
+| `UserSeeder` | Default SuperAdmin user (`superadmin` / `phalodi@123`) | Any SuperAdmin user exists |
+| `CountrySeeder` | Common countries (India, USA, UK, Australia, etc.) | `Countries` table not empty |
+
+Each seeder checks `IsSeededAsync()` first — if data already exists, it skips. This makes seeding idempotent and safe to run on every startup.
 
 ---
 

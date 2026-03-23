@@ -24,7 +24,7 @@ school-management/
 │   ├── SchoolManagement.Services/        # Business logic (interfaces + implementations)
 │   ├── SchoolManagement.DbInfrastructure/# EF Core DbContext, repositories, configurations
 │   ├── SchoolManagement.Common/          # Encryption, email, request context, helpers
-│   └── SchoolManagement.Seeding/         # Database seed data (roles, countries)
+│   └── SchoolManagement.Seeding/         # Database seed data (roles, users, countries)
 ├── tests/
 │   └── SchoolManagement.Tests/           # XUnit unit/integration tests
 └── docs/
@@ -42,35 +42,36 @@ school-management/
 - SQL Server (local or remote)
 
 ### 2. Configure
-Update `src/SchoolManagement.API/appsettings.json`:
+Update the connection string in `src/SchoolManagement.API/appsettings.json`:
 ```json
 {
   "ConnectionStrings": {
     "DefaultConnection": "Server=.;Database=SchoolManagement;Trusted_Connection=True;"
-  },
-  "JwtSettings": {
-    "SecretKey": "your-minimum-32-character-secret-key",
-    "Issuer": "SchoolManagement",
-    "Audience": "SchoolManagementClient",
-    "AccessTokenExpirationMinutes": 60,
-    "RefreshTokenExpirationDays": 7
   }
 }
 ```
 
+> `JwtSettings.SecretKey` and `EncryptionSettings.AesKey` are already set to real cryptographic values — no changes needed for development.
+
 ### 3. Apply Migrations
 ```bash
-cd src/SchoolManagement.DbInfrastructure
-dotnet ef database update --startup-project ../SchoolManagement.API
+dotnet ef database update \
+  --project src/SchoolManagement.DbInfrastructure \
+  --startup-project src/SchoolManagement.API
 ```
 
 ### 4. Run
 ```bash
-cd src/SchoolManagement.API
-dotnet run
+dotnet run --project src/SchoolManagement.API
 ```
 
-Swagger UI: `https://localhost:{port}/swagger`
+Swagger UI opens automatically at `https://localhost:{port}/swagger` (browser auto-launches on F5 / `dotnet run`).
+
+**Default SuperAdmin credentials (seeded on first run):**
+| Field | Value |
+|---|---|
+| Username | `superadmin` |
+| Password | `phalodi@123` |
 
 ### 5. Run Tests
 ```bash
@@ -91,7 +92,8 @@ dotnet test tests/SchoolManagement.Tests
 
 - JWT authentication with refresh token rotation
 - Soft delete on all master entities (`IsDeleted` flag)
-- Audit trail on every write (CreatedBy, ModifiedBy, IpAddress, Location, ScreenName, TableName)
+- Audit trail on every write (CreatedBy, ModifiedBy, IpAddress, Location, ScreenName, TableName, BatchId, ParentAuditLogId)
+- Parent–child audit linking — child entities automatically linked to their parent's audit row via EF FK metadata
 - API versioning (`/api/v1/...`)
 - Paginated list responses with search
 - E2E encryption support (RSA-2048 + AES-256-GCM, configurable)
