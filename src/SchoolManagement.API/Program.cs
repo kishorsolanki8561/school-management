@@ -59,8 +59,11 @@ await app.SeedDatabaseAsync();
 app.UseExceptionHandling();
 
 // 2. Swagger UI (available in all environments — restrict to Development only in production if required)
-var apiVersionProvider = app.Services.GetRequiredService<IApiVersionDescriptionProvider>();
-app.UseSwaggerDocs(apiVersionProvider);
+if (app.Environment.IsDevelopment())
+{
+    var apiVersionProvider = app.Services.GetRequiredService<IApiVersionDescriptionProvider>();
+    app.UseSwaggerDocs(apiVersionProvider);
+}
 
 // 3. HTTPS redirect
 app.UseHttpsRedirection();

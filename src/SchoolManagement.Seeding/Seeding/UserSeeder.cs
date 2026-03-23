@@ -20,8 +20,8 @@ public sealed class UserSeeder : ISeeder
     {
         var admin = new User
         {
-            Username = "admin@gmail.com",
-            Email    = "admin@gmail.com",
+            Username = "superadmin",
+            Email    = "kishorsolanki2012@gmail.com",
             PasswordHash = HashingUtility.HashPassword("phalodi@123"),
             Role     = UserRole.SuperAdmin
         };
