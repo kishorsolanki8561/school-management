@@ -5,6 +5,7 @@ using SchoolManagement.DbInfrastructure.Repositories.Interfaces;
 using SchoolManagement.Models.Common;
 using SchoolManagement.Models.DTOs.Master;
 using SchoolManagement.Models.Entities;
+using SchoolManagement.Common.Constants;
 using SchoolManagement.Services.Constants;
 using SchoolManagement.Services.Interfaces;
 
@@ -29,13 +30,13 @@ public sealed class CityService : ICityService
             .AnyAsync(s => s.Id == request.StateId, cancellationToken);
 
         if (!stateExists)
-            throw new KeyNotFoundException($"State with id {request.StateId} was not found.");
+            throw new KeyNotFoundException(AppMessages.State.NotFound(request.StateId));
 
         var exists = await _context.Cities
             .AnyAsync(c => c.Name == request.Name && c.StateId == request.StateId, cancellationToken);
 
         if (exists)
-            throw new InvalidOperationException($"A city named '{request.Name}' already exists in this state.");
+            throw new InvalidOperationException(AppMessages.City.AlreadyExists(request.Name));
 
         var city = new City
         {
@@ -58,7 +59,7 @@ public sealed class CityService : ICityService
         var city = await _context.Cities
             .Include(c => c.State).ThenInclude(s => s.Country)
             .FirstOrDefaultAsync(c => c.Id == id, cancellationToken)
-            ?? throw new KeyNotFoundException($"City with id {id} was not found.");
+            ?? throw new KeyNotFoundException(AppMessages.City.NotFound(id));
 
         city.Name = request.Name;
         city.IsActive = request.IsActive;
@@ -72,7 +73,7 @@ public sealed class CityService : ICityService
     {
         var city = await _context.Cities
             .FirstOrDefaultAsync(c => c.Id == id, cancellationToken)
-            ?? throw new KeyNotFoundException($"City with id {id} was not found.");
+            ?? throw new KeyNotFoundException(AppMessages.City.NotFound(id));
 
         city.IsDeleted = true;
         await _context.SaveChangesAsync(cancellationToken);

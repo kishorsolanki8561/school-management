@@ -26,4 +26,31 @@ public static class AppMessages
         public const string RequestNonceHeader  = "X-Encryption-Nonce";
         public const string ResponseNonceHeader = "X-Response-Nonce";
     }
+
+    public static class Country
+    {
+        public static string NotFound(int id)
+            => $"Country with id {id} was not found.";
+
+        public static string AlreadyExists(string name, string code)
+            => $"A country with the name '{name}' or code '{code}' already exists.";
+    }
+
+    public static class State
+    {
+        public static string NotFound(int id)
+            => $"State with id {id} was not found.";
+
+        public static string AlreadyExists(string name)
+            => $"A state named '{name}' already exists in this country.";
+    }
+
+    public static class City
+    {
+        public static string NotFound(int id)
+            => $"City with id {id} was not found.";
+
+        public static string AlreadyExists(string name)
+            => $"A city named '{name}' already exists in this state.";
+    }
 }

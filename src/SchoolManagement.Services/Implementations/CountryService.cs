@@ -5,6 +5,7 @@ using SchoolManagement.DbInfrastructure.Repositories.Interfaces;
 using SchoolManagement.Models.Common;
 using SchoolManagement.Models.DTOs.Master;
 using SchoolManagement.Models.Entities;
+using SchoolManagement.Common.Constants;
 using SchoolManagement.Services.Constants;
 using SchoolManagement.Services.Interfaces;
 
@@ -29,7 +30,7 @@ public sealed class CountryService : ICountryService
             .AnyAsync(c => c.Name == request.Name || c.Code == request.Code, cancellationToken);
 
         if (exists)
-            throw new InvalidOperationException($"A country with the name '{request.Name}' or code '{request.Code}' already exists.");
+            throw new InvalidOperationException(AppMessages.Country.AlreadyExists(request.Name, request.Code));
 
         var country = new Country
         {
@@ -47,7 +48,7 @@ public sealed class CountryService : ICountryService
     {
         var country = await _context.Countries
             .FirstOrDefaultAsync(c => c.Id == id, cancellationToken)
-            ?? throw new KeyNotFoundException($"Country with id {id} was not found.");
+            ?? throw new KeyNotFoundException(AppMessages.Country.NotFound(id));
 
         country.Name = request.Name;
         country.Code = request.Code;
@@ -62,7 +63,7 @@ public sealed class CountryService : ICountryService
     {
         var country = await _context.Countries
             .FirstOrDefaultAsync(c => c.Id == id, cancellationToken)
-            ?? throw new KeyNotFoundException($"Country with id {id} was not found.");
+            ?? throw new KeyNotFoundException(AppMessages.Country.NotFound(id));
 
         country.IsDeleted = true;
         await _context.SaveChangesAsync(cancellationToken);
