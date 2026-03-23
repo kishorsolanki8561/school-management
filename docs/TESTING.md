@@ -39,7 +39,7 @@ dotnet test --collect:"XPlat Code Coverage"
 | StateService | `Services/StateServiceTests.cs` | CRUD, country-state relationship, invalid countryId |
 | CityService | `Services/CityServiceTests.cs` | CRUD, state-city relationship, invalid stateId |
 | AuthService | `Services/AuthServiceTests.cs` | Login, register, refresh token, logout, forgot/reset password, token expiry |
-| AuditLogService | `Services/AuditLogServiceTests.cs` | Audit log retrieval and filtering |
+| AuditLogService | `Services/AuditLogServiceTests.cs` | GetByEntity, GetByUser, GetByScreen, GetByTable |
 | EncryptionService | `Common/EncryptionServiceTests.cs` | AES-256-GCM encrypt/decrypt, RSA key operations |
 | FilesValidator | `Common/FilesValidatorTests.cs` | File type, size, and extension validation |
 | HashingUtility | `Common/HashingUtilityTests.cs` | Password hashing and verification |
@@ -185,6 +185,12 @@ await _context.SaveChangesAsync();
 - Create city — throws when state not found
 - CRUD operations (same pattern as Country)
 - GetByState — returns only cities for given state
+
+### AuditLogService
+- GetByEntity — returns paged result for entity name + id
+- GetByUser — returns paged result for user id
+- GetByScreen — returns paged result for screen name
+- GetByTable — returns paged result for table name
 
 ### AuthService
 - Register — creates user with hashed password

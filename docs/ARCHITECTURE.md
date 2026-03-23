@@ -40,7 +40,7 @@ Dependency direction: API → Services → DbInfrastructure → Models
 - **Context/SchoolManagementDbContext** — EF Core context; auto-stamps audit fields in `SaveChangesAsync`
 - **Repositories/** — generic `IWriteRepository<T>` (EF Core) and `IReadRepository` (Dapper)
 - **Configurations/** — EF Core `IEntityTypeConfiguration<T>` per entity
-- **Interceptors/AuditInterceptor** — stamps CreatedBy, ModifiedBy, IpAddress, Location, ScreenName, TableName
+- **Interceptors/AuditInterceptor** — captures CreatedBy, ModifiedBy, IpAddress, Location, ScreenName, TableName, BatchId (groups all rows from the same `SaveChanges` call), ParentAuditLogId (links child to parent audit row via EF FK metadata)
 - **Extensions/DbInfrastructureExtensions.cs** — registers DbContext + repositories
 
 ### SchoolManagement.Models
@@ -188,6 +188,7 @@ dotnet ef migrations remove \
 |---|---|
 | `InitialCreate` | Users, Roles, RefreshTokens, PasswordResetTokens, AuditLogs, ErrorLogs, Countries, States, Cities |
 | `AddScreenNameAndTableNameToAuditLog` | Adds `ScreenName` (nullable) and `TableName` columns + indexes to AuditLogs |
+| `AddBatchIdAndParentAuditLogIdToAuditLog` | Adds `BatchId`, `ParentAuditLogId` columns + indexes to AuditLogs |
 
 > The `Microsoft.EntityFrameworkCore.Design` package is in `SchoolManagement.API.csproj` (as a private dev dependency) to support `dotnet ef` CLI tooling.
 
