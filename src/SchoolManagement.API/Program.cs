@@ -58,12 +58,9 @@ await app.SeedDatabaseAsync();
 // 1. Exception handling — must be first to catch all downstream exceptions
 app.UseExceptionHandling();
 
-// 2. Swagger UI (available in all environments — restrict to Development only in production if required)
-if (app.Environment.IsDevelopment())
-{
-    var apiVersionProvider = app.Services.GetRequiredService<IApiVersionDescriptionProvider>();
-    app.UseSwaggerDocs(apiVersionProvider);
-}
+// 2. Swagger UI (available in all environments)
+var apiVersionProvider = app.Services.GetRequiredService<IApiVersionDescriptionProvider>();
+app.UseSwaggerDocs(apiVersionProvider);
 
 // 3. HTTPS redirect
 app.UseHttpsRedirection();
@@ -81,7 +78,10 @@ app.UseAuthorization();
 // 7. E2E Encryption middleware (decrypts requests, encrypts responses)
 // app.UseEncryption(); // Uncomment to enable E2E encryption for all non-bypass routes
 
-// 8. Controllers
+// 8. Root redirect → Swagger
+app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
+
+// 9. Controllers
 app.MapControllers();
 
 app.Run();
