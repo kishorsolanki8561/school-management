@@ -1,0 +1,122 @@
+using AutoMapper;
+using Microsoft.EntityFrameworkCore;
+using SchoolManagement.DbInfrastructure.Context;
+using SchoolManagement.DbInfrastructure.Repositories.Interfaces;
+using SchoolManagement.Models.Common;
+using SchoolManagement.Models.DTOs.Master;
+using SchoolManagement.Models.Entities;
+using SchoolManagement.Services.Constants;
+using SchoolManagement.Services.Interfaces;
+
+namespace SchoolManagement.Services.Implementations;
+
+public sealed class StateService : IStateService
+{
+    private readonly SchoolManagementDbContext _context;
+    private readonly IReadRepository _readRepo;
+    private readonly IMapper _mapper;
+
+    public StateService(SchoolManagementDbContext context, IReadRepository readRepo, IMapper mapper)
+    {
+        _context = context;
+        _readRepo = readRepo;
+        _mapper = mapper;
+    }
+
+    public async Task<StateResponse> CreateAsync(CreateStateRequest request, CancellationToken cancellationToken = default)
+    {
+        var countryExists = await _context.Countries
+            .AnyAsync(c => c.Id == request.CountryId, cancellationToken);
+
+        if (!countryExists)
+            throw new KeyNotFoundException($"Country with id {request.CountryId} was not found.");
+
+        var exists = await _context.States
+            .AnyAsync(s => s.Name == request.Name && s.CountryId == request.CountryId, cancellationToken);
+
+        if (exists)
+            throw new InvalidOperationException($"A state named '{request.Name}' already exists in this country.");
+
+        var state = new State
+        {
+            Name = request.Name,
+            Code = request.Code,
+            CountryId = request.CountryId,
+        };
+
+        await _context.States.AddAsync(state, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        // Reload with navigation property so AutoMapper can resolve CountryName
+        await _context.Entry(state).Reference(s => s.Country).LoadAsync(cancellationToken);
+
+        return _mapper.Map<StateResponse>(state);
+    }
+
+    public async Task<StateResponse> UpdateAsync(int id, UpdateStateRequest request, CancellationToken cancellationToken = default)
+    {
+        var state = await _context.States
+            .Include(s => s.Country)
+            .FirstOrDefaultAsync(s => s.Id == id, cancellationToken)
+            ?? throw new KeyNotFoundException($"State with id {id} was not found.");
+
+        state.Name = request.Name;
+        state.Code = request.Code;
+        state.IsActive = request.IsActive;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return _mapper.Map<StateResponse>(state);
+    }
+
+    public async Task DeleteAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var state = await _context.States
+            .FirstOrDefaultAsync(s => s.Id == id, cancellationToken)
+            ?? throw new KeyNotFoundException($"State with id {id} was not found.");
+
+        state.IsDeleted = true;
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<StateResponse?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        return await _readRepo.QueryFirstOrDefaultAsync<StateResponse>(
+            StateQueries.GetById,
+            new { Id = id });
+    }
+
+    public async Task<PagedResult<StateResponse>> GetAllAsync(PaginationRequest pagination, CancellationToken cancellationToken = default)
+    {
+        var param = new
+        {
+            Search = pagination.Search,
+            pagination.PageSize,
+            Offset = pagination.Offset,
+        };
+
+        return await _readRepo.QueryPagedAsync<StateResponse>(
+            StateQueries.GetAll,
+            StateQueries.CountAll,
+            param,
+            pagination.Page,
+            pagination.PageSize);
+    }
+
+    public async Task<PagedResult<StateResponse>> GetByCountryAsync(int countryId, PaginationRequest pagination, CancellationToken cancellationToken = default)
+    {
+        var param = new
+        {
+            CountryId = countryId,
+            pagination.PageSize,
+            Offset = pagination.Offset,
+        };
+
+        return await _readRepo.QueryPagedAsync<StateResponse>(
+            StateQueries.GetByCountry,
+            StateQueries.CountByCountry,
+            param,
+            pagination.Page,
+            pagination.PageSize);
+    }
+}

@@ -9,6 +9,7 @@ public static class SeedingExtensions
     public static IServiceCollection AddSeeding(this IServiceCollection services)
     {
         services.AddScoped<ISeeder, RoleSeeder>();
+        services.AddScoped<ISeeder, CountrySeeder>();
         services.AddScoped<DatabaseSeeder>();
         return services;
     }
