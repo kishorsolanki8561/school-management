@@ -15,4 +15,6 @@ public sealed class AuditLog
     public string? ScreenName { get; init; }
     public string TableName { get; init; } = string.Empty;
     public DateTime Timestamp { get; init; } = DateTime.UtcNow;
+    public string? BatchId { get; init; }
+    public int? ParentAuditLogId { get; set; }
 }

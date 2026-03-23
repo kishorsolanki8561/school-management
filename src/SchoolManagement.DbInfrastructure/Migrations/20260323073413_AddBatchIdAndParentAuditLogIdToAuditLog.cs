@@ -4,52 +4,50 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace SchoolManagement.DbInfrastructure.Migrations
 {
-    public partial class AddScreenNameAndTableNameToAuditLog : Migration
+    public partial class AddBatchIdAndParentAuditLogIdToAuditLog : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<string>(
-                name: "ScreenName",
+                name: "BatchId",
                 table: "AuditLogs",
-                type: "nvarchar(450)",
-                maxLength: 450,
+                type: "nvarchar(36)",
+                maxLength: 36,
                 nullable: true);
 
-            migrationBuilder.AddColumn<string>(
-                name: "TableName",
+            migrationBuilder.AddColumn<int>(
+                name: "ParentAuditLogId",
                 table: "AuditLogs",
-                type: "nvarchar(450)",
-                maxLength: 450,
-                nullable: false,
-                defaultValue: "");
+                type: "int",
+                nullable: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_AuditLogs_ScreenName",
+                name: "IX_AuditLogs_BatchId",
                 table: "AuditLogs",
-                column: "ScreenName");
+                column: "BatchId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_AuditLogs_TableName",
+                name: "IX_AuditLogs_ParentAuditLogId",
                 table: "AuditLogs",
-                column: "TableName");
+                column: "ParentAuditLogId");
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropIndex(
-                name: "IX_AuditLogs_ScreenName",
+                name: "IX_AuditLogs_BatchId",
                 table: "AuditLogs");
 
             migrationBuilder.DropIndex(
-                name: "IX_AuditLogs_TableName",
+                name: "IX_AuditLogs_ParentAuditLogId",
                 table: "AuditLogs");
 
             migrationBuilder.DropColumn(
-                name: "ScreenName",
+                name: "BatchId",
                 table: "AuditLogs");
 
             migrationBuilder.DropColumn(
-                name: "TableName",
+                name: "ParentAuditLogId",
                 table: "AuditLogs");
         }
     }

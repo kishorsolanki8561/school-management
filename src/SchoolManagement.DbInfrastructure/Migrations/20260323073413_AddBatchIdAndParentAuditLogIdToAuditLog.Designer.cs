@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SchoolManagement.DbInfrastructure.Context;
 
@@ -11,9 +12,10 @@ using SchoolManagement.DbInfrastructure.Context;
 namespace SchoolManagement.DbInfrastructure.Migrations
 {
     [DbContext(typeof(SchoolManagementDbContext))]
-    partial class SchoolManagementDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260323073413_AddBatchIdAndParentAuditLogIdToAuditLog")]
+    partial class AddBatchIdAndParentAuditLogIdToAuditLog
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -96,7 +98,7 @@ namespace SchoolManagement.DbInfrastructure.Migrations
 
                     b.HasIndex("Timestamp");
 
-                    b.ToTable("AuditLogs", (string)null);
+                    b.ToTable("AuditLogs");
                 });
 
             modelBuilder.Entity("SchoolManagement.Models.Entities.City", b =>
@@ -147,7 +149,7 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                     b.HasIndex("Name", "StateId")
                         .IsUnique();
 
-                    b.ToTable("Cities", (string)null);
+                    b.ToTable("Cities");
                 });
 
             modelBuilder.Entity("SchoolManagement.Models.Entities.Country", b =>
@@ -201,7 +203,7 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("Countries", (string)null);
+                    b.ToTable("Countries");
                 });
 
             modelBuilder.Entity("SchoolManagement.Models.Entities.ErrorLog", b =>
@@ -238,7 +240,7 @@ namespace SchoolManagement.DbInfrastructure.Migrations
 
                     b.HasIndex("Timestamp");
 
-                    b.ToTable("ErrorLogs", (string)null);
+                    b.ToTable("ErrorLogs");
                 });
 
             modelBuilder.Entity("SchoolManagement.Models.Entities.PasswordResetToken", b =>
@@ -273,7 +275,7 @@ namespace SchoolManagement.DbInfrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("PasswordResetTokens", (string)null);
+                    b.ToTable("PasswordResetTokens");
                 });
 
             modelBuilder.Entity("SchoolManagement.Models.Entities.RefreshToken", b =>
@@ -310,7 +312,7 @@ namespace SchoolManagement.DbInfrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("RefreshTokens", (string)null);
+                    b.ToTable("RefreshTokens");
                 });
 
             modelBuilder.Entity("SchoolManagement.Models.Entities.Role", b =>
@@ -332,7 +334,7 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("Roles", (string)null);
+                    b.ToTable("Roles");
                 });
 
             modelBuilder.Entity("SchoolManagement.Models.Entities.State", b =>
@@ -388,7 +390,7 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                     b.HasIndex("Name", "CountryId")
                         .IsUnique();
 
-                    b.ToTable("States", (string)null);
+                    b.ToTable("States");
                 });
 
             modelBuilder.Entity("SchoolManagement.Models.Entities.User", b =>
@@ -448,7 +450,7 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                     b.HasIndex("Username")
                         .IsUnique();
 
-                    b.ToTable("Users", (string)null);
+                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("SchoolManagement.Models.Entities.City", b =>
@@ -467,8 +469,7 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                     b.HasOne("SchoolManagement.Models.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.Navigation("User");
                 });
@@ -478,8 +479,7 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                     b.HasOne("SchoolManagement.Models.Entities.User", "User")
                         .WithMany("RefreshTokens")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.Navigation("User");
                 });

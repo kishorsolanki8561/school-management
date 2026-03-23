@@ -13,5 +13,12 @@ internal sealed class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
         builder.HasIndex(a => a.Timestamp);
         builder.HasIndex(a => a.ScreenName);
         builder.HasIndex(a => a.TableName);
+
+        builder.Property(a => a.BatchId).HasMaxLength(36).IsRequired(false);
+        builder.HasIndex(a => a.BatchId);
+
+        builder.Property(a => a.ParentAuditLogId).IsRequired(false);
+        builder.HasIndex(a => a.ParentAuditLogId);
+        // No FK constraint — audit rows may be archived/purged independently
     }
 }
