@@ -204,7 +204,7 @@ await _context.SaveChangesAsync();
 - GetAll — returns paged result from read repository
 
 ### AuthService
-- Register — creates user with hashed password; `roleIds` (list) creates one `UserRoleMapping` per role; `orgId` creates `UserOrganizationMapping`
+- Register — creates user with hashed password; `roleIds` (list) creates one `UserRoleMapping` per role; `orgIds` (list) creates one `UserOrganizationMapping` per org
 - Register — throws on duplicate username/email
 - Login — returns access + refresh token on valid credentials; `role` field in response is the first assigned role name (empty string if none)
 - Login — throws on wrong password

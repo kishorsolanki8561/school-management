@@ -59,7 +59,7 @@ Dependency direction: API → Services → DbInfrastructure → Models
 
 ### SchoolManagement.Seeding
 - **ISeeder** — contract for idempotent seed classes
-- **RoleSeeder** — seeds 3 default roles (Owner Admin, Super Admin, Admin) on first run
+- **RoleSeeder** — upserts 29 roles (with `IsOrgRole` flag) on every startup: inserts missing roles, updates changed rows only — no-op when nothing has changed
 - **UserSeeder** — seeds default admin user (`superadmin`) + assigns Super Admin role via `UserRoleMapping`
 - **CountrySeeder** — seeds country reference data
 - **DatabaseSeeder** — orchestrates all seeders in order; called from `app.SeedDatabaseAsync()` at startup
@@ -145,7 +145,7 @@ public abstract class BaseEntity
 
 Soft delete is applied via a global query filter: `IsDeleted == false` is appended automatically to all EF Core queries.
 
-`Role` additionally carries its own `OrgId` (nullable) to support organisation-scoped roles.
+`Role` additionally carries `IsOrgRole` (bool) — `true` for school-scoped roles, `false` for system-level roles (OwnerAdmin, SuperAdmin, Admin).
 
 ---
 
@@ -194,7 +194,9 @@ dotnet ef migrations remove \
 | `AddBatchIdAndParentAuditLogIdToAuditLog` | Adds `BatchId`, `ParentAuditLogId` columns + indexes to AuditLogs |
 | `AddPayloadAndContextToErrorLog` | Adds `IpAddress`, `Location`, `HttpMethod`, `StatusCode`, `RequestPayload`, `ResponsePayload` to ErrorLogs |
 | `AddOrgIdUserRoleMappingAndIsAdmin` | Adds `OrgId` to all BaseEntity tables; drops `Role` from Users; adds `IsAdmin` to Users; adds all BaseEntity columns to Roles; creates `UserRoleMappings` table |
-| `AddOrganizationAndUserOrgMapping` | Removes `OrgId` from BaseEntity tables (keeps on Roles); creates `Organizations` table; creates `UserOrganizationMappings` table |
+| `AddOrganizationAndUserOrgMapping` | Removes `OrgId` from BaseEntity tables (including Roles at this stage); creates `Organizations` table; creates `UserOrganizationMappings` table |
+| `RemoveOrgIdFromRole` | Removes `OrgId` column from `Roles` table |
+| `AddIsOrgRoleToRole` | Adds `IsOrgRole` (bool, default false) column to `Roles` table |
 
 > The `Microsoft.EntityFrameworkCore.Design` package is in `SchoolManagement.API.csproj` (as a private dev dependency) to support `dotnet ef` CLI tooling.
 
