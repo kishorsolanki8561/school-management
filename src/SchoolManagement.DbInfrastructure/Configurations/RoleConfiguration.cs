@@ -8,7 +8,7 @@ internal sealed class RoleConfiguration : IEntityTypeConfiguration<Role>
 {
     public void Configure(EntityTypeBuilder<Role> builder)
     {
-        builder.HasKey(r => r.Id);
+        builder.HasQueryFilter(r => !r.IsDeleted);
         builder.Property(r => r.Id).ValueGeneratedNever(); // IDs are fixed — mirror UserRole enum values
         builder.HasIndex(r => r.Name).IsUnique();
         builder.Property(r => r.Name).HasMaxLength(50).IsRequired();

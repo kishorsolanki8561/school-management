@@ -20,5 +20,8 @@ public sealed class AutoMapperProfile : Profile
             .ForMember(dest => dest.StateName,   opt => opt.MapFrom(src => src.State.Name))
             .ForMember(dest => dest.CountryId,   opt => opt.MapFrom(src => src.State.CountryId))
             .ForMember(dest => dest.CountryName, opt => opt.MapFrom(src => src.State.Country.Name));
+
+        // Organization — direct property-to-property
+        CreateMap<Organization, OrganizationResponse>();
     }
 }

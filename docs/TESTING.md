@@ -38,7 +38,8 @@ dotnet test --collect:"XPlat Code Coverage"
 | CountryService | `Services/CountryServiceTests.cs` | Create, Update, Delete, GetById, GetAll, duplicate name/code validation |
 | StateService | `Services/StateServiceTests.cs` | CRUD, country-state relationship, invalid countryId |
 | CityService | `Services/CityServiceTests.cs` | CRUD, state-city relationship, invalid stateId |
-| AuthService | `Services/AuthServiceTests.cs` | Login, register, refresh token, logout, forgot/reset password, token expiry |
+| OrganizationService | `Services/OrganizationServiceTests.cs` | Create, Update, Delete, GetById, GetAll, duplicate name validation |
+| AuthService | `Services/AuthServiceTests.cs` | Login, register, refresh token, logout, forgot/reset password, multi-role + org assignment |
 | AuditLogService | `Services/AuditLogServiceTests.cs` | GetByEntity, GetByUser, GetByScreen, GetByTable |
 | EncryptionService | `Common/EncryptionServiceTests.cs` | AES-256-GCM encrypt/decrypt, RSA key operations |
 | FilesValidator | `Common/FilesValidatorTests.cs` | File type, size, and extension validation |
@@ -192,10 +193,20 @@ await _context.SaveChangesAsync();
 - GetByScreen — returns paged result for screen name
 - GetByTable — returns paged result for table name
 
+### OrganizationService
+- Create — returns mapped `OrganizationResponse`
+- Create — throws when name already exists
+- Update — updates Name, Address, IsActive
+- Update — throws when ID not found
+- Delete — sets `IsDeleted = true`
+- Delete — throws when ID not found
+- GetById — delegates to read repository
+- GetAll — returns paged result from read repository
+
 ### AuthService
-- Register — creates user with hashed password
+- Register — creates user with hashed password; `roleIds` (list) creates one `UserRoleMapping` per role; `orgId` creates `UserOrganizationMapping`
 - Register — throws on duplicate username/email
-- Login — returns access + refresh token on valid credentials
+- Login — returns access + refresh token on valid credentials; `role` field in response is the first assigned role name (empty string if none)
 - Login — throws on wrong password
 - Refresh — rotates tokens on valid refresh token
 - Refresh — throws on expired/revoked token

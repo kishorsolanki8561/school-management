@@ -86,6 +86,24 @@ CreateMap<City, CityResponse>()
 
 ---
 
+### Organization → OrganizationResponse
+
+```csharp
+CreateMap<Organization, OrganizationResponse>();
+```
+
+All properties map by convention (same name, compatible type). No custom configuration needed.
+
+| Source (`Organization`) | Destination (`OrganizationResponse`) |
+|---|---|
+| `Id` | `Id` |
+| `Name` | `Name` |
+| `Address` | `Address` |
+| `IsActive` | `IsActive` |
+| `CreatedAt` | `CreatedAt` |
+
+---
+
 ## Services That Use AutoMapper
 
 | Service | File | Usage |
@@ -93,8 +111,9 @@ CreateMap<City, CityResponse>()
 | `CountryService` | `Services/Implementations/CountryService.cs` | `_mapper.Map<CountryResponse>(country)` |
 | `StateService` | `Services/Implementations/StateService.cs` | `_mapper.Map<StateResponse>(state)` |
 | `CityService` | `Services/Implementations/CityService.cs` | `_mapper.Map<CityResponse>(city)` |
+| `OrganizationService` | `Services/Implementations/OrganizationService.cs` | `_mapper.Map<OrganizationResponse>(org)` |
 
-All three services inject `IMapper` via constructor and call `_mapper.Map<TDestination>(source)`.
+All four services inject `IMapper` via constructor and call `_mapper.Map<TDestination>(source)`.
 
 ---
 
@@ -115,14 +134,14 @@ Computed at runtime →  AccessToken (JWT), RefreshToken (random bytes), AccessT
 return new LoginResponse
 {
     Username          = user.Username,
-    Role              = user.Role.ToString(),
-    AccessToken       = GenerateJwt(user),           // computed
-    RefreshToken      = GenerateRefreshToken(),       // computed
-    AccessTokenExpiry = DateTime.UtcNow.AddMinutes(expiry)  // computed
+    Role              = roleNames.FirstOrDefault() ?? string.Empty,  // from UserRoleMapping
+    AccessToken       = GenerateJwt(user, roleNames),   // computed
+    RefreshToken      = GenerateRefreshToken(),          // computed
+    AccessTokenExpiry = DateTime.UtcNow.AddMinutes(expiry)           // computed
 };
 ```
 
-Three of the five fields (`AccessToken`, `RefreshToken`, `AccessTokenExpiry`) are **generated values that do not exist on the `User` entity**. AutoMapper is designed for entity→DTO projection from a single source object. Using it here would require `IMappingAction<User, LoginResponse>` or `AfterMap` hooks injecting the token service — which adds complexity without benefit.
+`Role` is resolved by querying `UserRoleMappings` at token-generation time — it is not a stored property on `User`. Three of the five fields (`AccessToken`, `RefreshToken`, `AccessTokenExpiry`) are **generated values that do not exist on the `User` entity**. AutoMapper is designed for entity→DTO projection from a single source object. Using it here would require `IMappingAction<User, LoginResponse>` or `AfterMap` hooks injecting the token service — which adds complexity without benefit.
 
 Manual construction is the right choice here.
 

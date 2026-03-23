@@ -53,4 +53,13 @@ public static class AppMessages
         public static string AlreadyExists(string name)
             => $"A city named '{name}' already exists in this state.";
     }
+
+    public static class Organization
+    {
+        public static string NotFound(int id)
+            => $"Organization with id {id} was not found.";
+
+        public static string AlreadyExists(string name)
+            => $"An organization named '{name}' already exists.";
+    }
 }

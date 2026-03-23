@@ -1,6 +1,6 @@
 # School Management System
 
-A modular monolithic ASP.NET Core 6 Web API for managing school operations — authentication, master data (countries, states, cities), user management, and audit logging.
+A modular monolithic ASP.NET Core 6 Web API for managing school operations — authentication, master data (countries, states, cities, organizations), user management, and audit logging.
 
 ## Tech Stack
 
@@ -84,13 +84,14 @@ dotnet test tests/SchoolManagement.Tests
 |---|---|
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Modular monolithic layers and request lifecycle |
 | [API.md](docs/API.md) | All REST endpoints with request/response formats |
-| [MASTERS.md](docs/MASTERS.md) | Country, State, City master data design |
+| [MASTERS.md](docs/MASTERS.md) | Country, State, City, Organization master data design |
 | [TESTING.md](docs/TESTING.md) | Test strategy, coverage, and patterns |
 | [AUTOMAPPER.md](docs/AUTOMAPPER.md) | Mapping profiles and conventions |
 
 ## Key Features
 
 - JWT authentication with refresh token rotation
+- Multi-role and multi-organisation assignment at user registration
 - Soft delete on all master entities (`IsDeleted` flag)
 - Audit trail on every write (CreatedBy, ModifiedBy, IpAddress, Location, ScreenName, TableName, BatchId, ParentAuditLogId)
 - Parent–child audit linking — child entities automatically linked to their parent's audit row via EF FK metadata

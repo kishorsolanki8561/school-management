@@ -8,7 +8,6 @@ using SchoolManagement.Common.Utilities;
 using SchoolManagement.DbInfrastructure.Context;
 using SchoolManagement.Models.DTOs.Auth;
 using SchoolManagement.Models.Entities;
-using SchoolManagement.Models.Enums;
 using SchoolManagement.Services.Implementations;
 using Xunit;
 
@@ -102,17 +101,48 @@ public sealed class AuthServiceTests : IDisposable
             Username = "dave",
             Email    = "dave@test.com",
             Password = "Pass1!",
-            Role     = UserRole.Teacher,
+            // RoleIds and OrgId omitted — both optional
         });
 
         result.AccessToken.Should().NotBeNullOrEmpty();
         result.RefreshToken.Should().NotBeNullOrEmpty();
         result.Username.Should().Be("dave");
-        result.Role.Should().Be(UserRole.Teacher.ToString());
+        result.Role.Should().BeEmpty(); // no role assigned
 
         var saved = await _context.Users.FirstOrDefaultAsync(u => u.Username == "dave");
         saved.Should().NotBeNull();
         HashingUtility.VerifyPassword("Pass1!", saved!.PasswordHash).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task RegisterAsync_WithMultipleRolesAndMultipleOrgs_CreatesMappings()
+    {
+        // Seed roles
+        await _context.Roles.AddRangeAsync(
+            new SchoolManagement.Models.Entities.Role { Id = 1, Name = "Owner Admin" },
+            new SchoolManagement.Models.Entities.Role { Id = 2, Name = "Super Admin" });
+        // Seed organisations
+        await _context.Organizations.AddRangeAsync(
+            new SchoolManagement.Models.Entities.Organization { Id = 1, Name = "Org A" },
+            new SchoolManagement.Models.Entities.Organization { Id = 2, Name = "Org B" });
+        await _context.SaveChangesAsync();
+
+        await _sut.RegisterAsync(new RegisterRequest
+        {
+            Username = "multi",
+            Email    = "multi@test.com",
+            Password = "Pass1!",
+            RoleIds  = new List<int> { 1, 2 },
+            OrgIds   = new List<int> { 1, 2 },
+        });
+
+        var user = await _context.Users.FirstAsync(u => u.Username == "multi");
+        var roleMappings = await _context.UserRoleMappings.Where(m => m.UserId == user.Id).ToListAsync();
+        var orgMappings  = await _context.UserOrganizationMappings.Where(m => m.UserId == user.Id).ToListAsync();
+
+        roleMappings.Should().HaveCount(2);
+        orgMappings.Should().HaveCount(2);
+        orgMappings.Select(m => m.OrgId).Should().BeEquivalentTo(new[] { 1, 2 });
     }
 
     [Fact]

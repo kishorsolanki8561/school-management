@@ -1,6 +1,6 @@
-# Master Data — Country, State, City
+# Master Data — Country, State, City, Organization
 
-Master data provides reference tables used throughout the system. The three master entities form a strict hierarchy: **Country → State → City**.
+Master data provides reference tables used throughout the system. Geographic data forms a strict hierarchy: **Country → State → City**. Organizations are independently managed tenants.
 
 ---
 
@@ -62,6 +62,38 @@ All three entities extend `BaseEntity` (audit fields + soft delete). See [ARCHIT
 | `State` | State | Navigation |
 | `IsActive` | bool | Default `true` |
 | *(BaseEntity fields)* | | |
+
+---
+
+### Organization
+**File:** `src/SchoolManagement.Models/Entities/Organization.cs`
+
+| Property | Type | Notes |
+|---|---|---|
+| `Id` | int | PK, auto-increment |
+| `Name` | string | Required, max 200, unique |
+| `Address` | string? | Optional, max 500 |
+| `IsActive` | bool | Default `true` |
+| `UserOrganizationMappings` | `ICollection<UserOrganizationMapping>` | Navigation |
+| *(BaseEntity fields)* | | CreatedAt, CreatedBy, IsDeleted, … |
+
+---
+
+### UserOrganizationMapping
+**File:** `src/SchoolManagement.Models/Entities/UserOrganizationMapping.cs`
+
+Many-to-many join between `User` and `Organization`. A user can belong to multiple organisations.
+
+| Property | Type | Notes |
+|---|---|---|
+| `Id` | int | PK, auto-increment |
+| `UserId` | int | FK → User.Id (cascade delete) |
+| `OrgId` | int | FK → Organization.Id (restrict delete) |
+| `User` | User | Navigation |
+| `Organization` | Organization | Navigation |
+| *(BaseEntity fields)* | | |
+
+Unique index on `(UserId, OrgId)` — a user cannot be mapped to the same org twice.
 
 ---
 
@@ -153,6 +185,33 @@ DateTime CreatedAt
 
 ---
 
+### Organization DTOs
+**File:** `src/SchoolManagement.Models/DTOs/Master/OrganizationDtos.cs`
+
+**`CreateOrganizationRequest`**
+```csharp
+string Name    // required
+string? Address
+```
+
+**`UpdateOrganizationRequest`**
+```csharp
+string Name
+string? Address
+bool IsActive
+```
+
+**`OrganizationResponse`**
+```csharp
+int Id
+string Name
+string? Address
+bool IsActive
+DateTime CreatedAt
+```
+
+---
+
 ## AutoMapper Mappings
 
 **File:** `src/SchoolManagement.Models/Mappings/AutoMapperProfile.cs`
@@ -170,6 +229,9 @@ CreateMap<City, CityResponse>()
     .ForMember(d => d.StateName,   o => o.MapFrom(s => s.State.Name))
     .ForMember(d => d.CountryId,   o => o.MapFrom(s => s.State.CountryId))
     .ForMember(d => d.CountryName, o => o.MapFrom(s => s.State.Country.Name));
+
+// Organization — direct property-to-property
+CreateMap<Organization, OrganizationResponse>();
 ```
 
 > Navigation properties must be loaded (via `.Include()` or Dapper join) before mapping, otherwise nested fields will be `null`.
@@ -231,15 +293,30 @@ CreateMap<City, CityResponse>()
 
 ---
 
+### IOrganizationService / OrganizationService
+**Files:**
+- `src/SchoolManagement.Services/Interfaces/IOrganizationService.cs`
+- `src/SchoolManagement.Services/Implementations/OrganizationService.cs`
+
+**Methods**
+
+| Method | Description |
+|---|---|
+| `CreateAsync(request)` | Validates no duplicate name, inserts, returns mapped DTO |
+| `UpdateAsync(id, request)` | Updates Name, Address, IsActive |
+| `DeleteAsync(id)` | Soft delete |
+| `GetByIdAsync(id)` | Dapper read with `OrganizationQueries.GetById` |
+| `GetAllAsync(pagination)` | Dapper paged read with optional search on Name/Address |
+
+---
+
 ## Soft Delete
 
 No records are physically removed. Deleting sets `IsDeleted = true`. EF Core global query filters exclude deleted records automatically:
 
 ```csharp
-// In DbContext.OnModelCreating:
-modelBuilder.Entity<Country>().HasQueryFilter(c => !c.IsDeleted);
-modelBuilder.Entity<State>().HasQueryFilter(s => !s.IsDeleted);
-modelBuilder.Entity<City>().HasQueryFilter(c => !c.IsDeleted);
+// Defined in each entity's IEntityTypeConfiguration:
+builder.HasQueryFilter(c => !c.IsDeleted);  // Country, State, City, Organization, UserOrganizationMapping
 ```
 
 Dapper queries include `WHERE IsDeleted = 0` explicitly in their SQL constants.
@@ -268,11 +345,45 @@ public interface ISeeder
 
 | Seeder | Seeds | Check |
 |---|---|---|
-| `RoleSeeder` | Default roles (SuperAdmin, SchoolAdmin, Supervisor, Teacher, Student) | `Roles` table not empty |
-| `UserSeeder` | Default SuperAdmin user (`superadmin` / `phalodi@123`) | Any SuperAdmin user exists |
+| `RoleSeeder` | 29 roles (3 system + 26 school roles, Ids 1–29) — see list below | `Roles` table not empty |
+| `UserSeeder` | Default admin user (`superadmin` / `phalodi@123`, `IsAdmin=true`) + `UserRoleMapping` linking to Super Admin | Any user with `IsAdmin = true` |
 | `CountrySeeder` | Common countries (India, USA, UK, Australia, etc.) | `Countries` table not empty |
 
 Each seeder checks `IsSeededAsync()` first — if data already exists, it skips. This makes seeding idempotent and safe to run on every startup.
+
+**Seeded roles (RoleSeeder):**
+
+| Id | Name | Category | IsOrgRole |
+|---|---|---|---|
+| 1 | Owner Admin | System | `false` |
+| 2 | Super Admin | System | `false` |
+| 3 | Admin | System | `false` |
+| 4 | Student | Academic | `true` |
+| 5 | Teacher | Academic | `true` |
+| 6 | Head Teacher | Academic | `true` |
+| 7 | Principal | Academic | `true` |
+| 8 | Vice Principal | Academic | `true` |
+| 9 | Coordinator | Academic | `true` |
+| 10 | Parent | Parent / Guardian | `true` |
+| 11 | Guardian | Parent / Guardian | `true` |
+| 12 | School Administrator | Administrative | `true` |
+| 13 | Office Staff | Administrative | `true` |
+| 14 | Clerk | Administrative | `true` |
+| 15 | Accountant | Administrative | `true` |
+| 16 | Librarian | Administrative | `true` |
+| 17 | Lab Assistant | Administrative | `true` |
+| 18 | IT Staff | Administrative | `true` |
+| 19 | Receptionist | Administrative | `true` |
+| 20 | Counselor | Administrative | `true` |
+| 21 | Special Educator | Administrative | `true` |
+| 22 | Nurse | Health | `true` |
+| 23 | Medical Staff | Health | `true` |
+| 24 | Driver | Support / Operations | `true` |
+| 25 | Conductor | Support / Operations | `true` |
+| 26 | Attendant | Support / Operations | `true` |
+| 27 | Security Guard | Support / Operations | `true` |
+| 28 | Cleaner | Support / Operations | `true` |
+| 29 | Maintenance Staff | Support / Operations | `true` |
 
 ---
 
@@ -283,6 +394,8 @@ Each seeder checks `IsSeededAsync()` first — if data already exists, it skips.
 | Country | `src/SchoolManagement.DbInfrastructure/Configurations/CountryConfiguration.cs` |
 | State | `src/SchoolManagement.DbInfrastructure/Configurations/StateConfiguration.cs` |
 | City | `src/SchoolManagement.DbInfrastructure/Configurations/CityConfiguration.cs` |
+| Organization | `src/SchoolManagement.DbInfrastructure/Configurations/OrganizationConfiguration.cs` |
+| UserOrganizationMapping | `src/SchoolManagement.DbInfrastructure/Configurations/UserOrganizationMappingConfiguration.cs` |
 
 Configurations define:
 - Column types and max lengths

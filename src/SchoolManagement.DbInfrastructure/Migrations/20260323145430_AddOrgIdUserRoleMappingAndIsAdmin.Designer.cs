@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SchoolManagement.DbInfrastructure.Context;
 
@@ -11,9 +12,10 @@ using SchoolManagement.DbInfrastructure.Context;
 namespace SchoolManagement.DbInfrastructure.Migrations
 {
     [DbContext(typeof(SchoolManagementDbContext))]
-    partial class SchoolManagementDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260323145430_AddOrgIdUserRoleMappingAndIsAdmin")]
+    partial class AddOrgIdUserRoleMappingAndIsAdmin
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -135,6 +137,9 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<int?>("OrgId")
+                        .HasColumnType("int");
+
                     b.Property<int>("StateId")
                         .HasColumnType("int");
 
@@ -190,6 +195,9 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<int?>("OrgId")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
@@ -255,56 +263,6 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                     b.HasIndex("Timestamp");
 
                     b.ToTable("ErrorLogs");
-                });
-
-            modelBuilder.Entity("SchoolManagement.Models.Entities.Organization", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
-
-                    b.Property<string>("Address")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("IpAddress")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Location")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("ModifiedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ModifiedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Name")
-                        .IsUnique();
-
-                    b.ToTable("Organizations");
                 });
 
             modelBuilder.Entity("SchoolManagement.Models.Entities.PasswordResetToken", b =>
@@ -401,9 +359,6 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<bool>("IsOrgRole")
-                        .HasColumnType("bit");
-
                     b.Property<string>("Location")
                         .HasColumnType("nvarchar(max)");
 
@@ -417,6 +372,9 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
+
+                    b.Property<int?>("OrgId")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
@@ -472,6 +430,9 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<int?>("OrgId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CountryId");
@@ -522,6 +483,9 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                     b.Property<string>("ModifiedBy")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("OrgId")
+                        .HasColumnType("int");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -539,52 +503,6 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Users");
-                });
-
-            modelBuilder.Entity("SchoolManagement.Models.Entities.UserOrganizationMapping", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("IpAddress")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Location")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("ModifiedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ModifiedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("OrgId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OrgId");
-
-                    b.HasIndex("UserId", "OrgId")
-                        .IsUnique();
-
-                    b.ToTable("UserOrganizationMappings");
                 });
 
             modelBuilder.Entity("SchoolManagement.Models.Entities.UserRoleMapping", b =>
@@ -616,6 +534,9 @@ namespace SchoolManagement.DbInfrastructure.Migrations
 
                     b.Property<string>("ModifiedBy")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("OrgId")
+                        .HasColumnType("int");
 
                     b.Property<int>("RoleId")
                         .HasColumnType("int");
@@ -675,25 +596,6 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                     b.Navigation("Country");
                 });
 
-            modelBuilder.Entity("SchoolManagement.Models.Entities.UserOrganizationMapping", b =>
-                {
-                    b.HasOne("SchoolManagement.Models.Entities.Organization", "Organization")
-                        .WithMany("UserOrganizationMappings")
-                        .HasForeignKey("OrgId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("SchoolManagement.Models.Entities.User", "User")
-                        .WithMany("UserOrganizationMappings")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Organization");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("SchoolManagement.Models.Entities.UserRoleMapping", b =>
                 {
                     b.HasOne("SchoolManagement.Models.Entities.Role", "Role")
@@ -718,11 +620,6 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                     b.Navigation("States");
                 });
 
-            modelBuilder.Entity("SchoolManagement.Models.Entities.Organization", b =>
-                {
-                    b.Navigation("UserOrganizationMappings");
-                });
-
             modelBuilder.Entity("SchoolManagement.Models.Entities.Role", b =>
                 {
                     b.Navigation("UserRoleMappings");
@@ -736,8 +633,6 @@ namespace SchoolManagement.DbInfrastructure.Migrations
             modelBuilder.Entity("SchoolManagement.Models.Entities.User", b =>
                 {
                     b.Navigation("RefreshTokens");
-
-                    b.Navigation("UserOrganizationMappings");
 
                     b.Navigation("UserRoleMappings");
                 });

@@ -14,19 +14,28 @@ public sealed class UserSeeder : ISeeder
         => _context = context;
 
     public async Task<bool> IsSeededAsync(CancellationToken cancellationToken = default)
-        => await _context.Users.AnyAsync(u => u.Role == UserRole.SuperAdmin, cancellationToken);
+        => await _context.Users.AnyAsync(u => u.IsAdmin, cancellationToken);
 
     public async Task SeedAsync(CancellationToken cancellationToken = default)
     {
         var admin = new User
         {
-            Username = "superadmin",
-            Email    = "kishorsolanki2012@gmail.com",
+            Username     = "OwnerAdmin",
+            Email        = "kishorsolanki2012@gmail.com",
             PasswordHash = HashingUtility.HashPassword("phalodi@123"),
-            Role     = UserRole.SuperAdmin
+            IsAdmin      = true
         };
 
         await _context.Users.AddAsync(admin, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        // Assign "Super Admin" role (Id=2) via UserRoleMapping
+        var mapping = new UserRoleMapping
+        {
+            UserId = admin.Id,
+            RoleId = (int)UserRole.OwnerAdmin
+        };
+        await _context.UserRoleMappings.AddAsync(mapping, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
     }
 }

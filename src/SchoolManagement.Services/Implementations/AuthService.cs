@@ -52,14 +52,33 @@ public sealed class AuthService : IAuthService
 
         var user = new User
         {
-            Username = request.Username,
-            Email = request.Email,
+            Username     = request.Username,
+            Email        = request.Email,
             PasswordHash = HashingUtility.HashPassword(request.Password),
-            Role = request.Role
         };
 
         await _context.Users.AddAsync(user, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
+
+        // Assign roles via UserRoleMapping (multiple roles supported)
+        if (request.RoleIds is { Count: > 0 })
+        {
+            var roleMappings = request.RoleIds
+                .Distinct()
+                .Select(roleId => new UserRoleMapping { UserId = user.Id, RoleId = roleId });
+            await _context.UserRoleMappings.AddRangeAsync(roleMappings, cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+
+        // Assign organisations via UserOrganizationMapping (multiple orgs supported)
+        if (request.OrgIds is { Count: > 0 })
+        {
+            var orgMappings = request.OrgIds
+                .Distinct()
+                .Select(orgId => new UserOrganizationMapping { UserId = user.Id, OrgId = orgId });
+            await _context.UserOrganizationMappings.AddRangeAsync(orgMappings, cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken);
+        }
 
         return await GenerateTokensAsync(user, cancellationToken);
     }
@@ -129,8 +148,8 @@ public sealed class AuthService : IAuthService
 
         var resetToken = new PasswordResetToken
         {
-            UserId = user.Id,
-            Token = tokenValue,
+            UserId    = user.Id,
+            Token     = tokenValue,
             ExpiresAt = DateTime.UtcNow.AddHours(_emailSettings.TokenExpirationHours)
         };
 
@@ -170,14 +189,23 @@ public sealed class AuthService : IAuthService
 
     private async Task<LoginResponse> GenerateTokensAsync(User user, CancellationToken cancellationToken)
     {
-        var accessToken = GenerateAccessToken(user);
+        // Load role names from UserRoleMapping for JWT claims and LoginResponse
+        var roleNames = await _context.UserRoleMappings
+            .Where(urm => urm.UserId == user.Id && !urm.IsDeleted)
+            .Include(urm => urm.Role)
+            .Select(urm => urm.Role!.Name)
+            .ToListAsync(cancellationToken);
+
+        var primaryRole = roleNames.FirstOrDefault() ?? string.Empty;
+
+        var accessToken = GenerateAccessToken(user, roleNames);
         var refreshTokenValue = GenerateRefreshTokenValue();
         var expiry = DateTimeUtility.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes);
 
         var refreshToken = new RefreshToken
         {
-            Token = refreshTokenValue,
-            UserId = user.Id,
+            Token     = refreshTokenValue,
+            UserId    = user.Id,
             ExpiresAt = DateTimeUtility.AddDays(_jwtSettings.RefreshTokenExpirationDays)
         };
 
@@ -186,29 +214,31 @@ public sealed class AuthService : IAuthService
 
         return new LoginResponse
         {
-            AccessToken = accessToken,
-            RefreshToken = refreshTokenValue,
+            AccessToken       = accessToken,
+            RefreshToken      = refreshTokenValue,
             AccessTokenExpiry = expiry,
-            Username = user.Username,
-            Role = user.Role.ToString()
+            Username          = user.Username,
+            Role              = primaryRole
         };
     }
 
-    private string GenerateAccessToken(User user)
+    private string GenerateAccessToken(User user, IEnumerable<string> roleNames)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        var claims = new[]
+        var claims = new List<Claim>
         {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64),
-            new Claim(ClaimTypes.Name, user.Username),
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Role, user.Role.ToString()),
-            new Claim(ClaimTypes.Email, user.Email)
+            new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64),
+            new(ClaimTypes.Name, user.Username),
+            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new(ClaimTypes.Email, user.Email)
         };
+
+        foreach (var role in roleNames)
+            claims.Add(new Claim(ClaimTypes.Role, role));
 
         var token = new JwtSecurityToken(
             issuer: _jwtSettings.Issuer,

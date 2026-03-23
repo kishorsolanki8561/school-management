@@ -73,7 +73,7 @@ Authenticate and receive tokens.
   "refreshToken": "abc123...",
   "accessTokenExpiry": "2026-03-23T10:00:00Z",
   "username": "johndoe",
-  "role": "SchoolAdmin"
+  "role": "Super Admin"
 }
 ```
 
@@ -88,9 +88,13 @@ Register a new user account.
   "username": "string",
   "email": "string",
   "password": "string",
-  "role": "Student | Teacher | SchoolAdmin | Supervisor | SuperAdmin"
+  "roleIds": [1, 2],
+  "orgIds": [5, 6]
 }
 ```
+
+> `roleIds` is optional. Each ID must match an existing `Roles.Id` (1=Owner Admin, 2=Super Admin, 3=Admin). One `UserRoleMapping` row is created per entry.
+> `orgIds` is optional. Each ID must match an existing `Organizations.Id`. One `UserOrganizationMapping` row is created per entry — a user can belong to multiple organisations simultaneously.
 
 ---
 
@@ -360,6 +364,50 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
 
 ---
 
+## Organization Module
+
+All endpoints require auth (`Bearer`).
+
+### POST `/organization`
+Create a new organization.
+
+**Request**
+```json
+{ "name": "Sunrise Academy", "address": "123 Main St" }
+```
+
+---
+
+### PUT `/organization/{id}`
+Update an existing organization.
+
+**Request**
+```json
+{ "name": "New Name", "address": "456 Ave", "isActive": true }
+```
+
+---
+
+### DELETE `/organization/{id}`
+Soft-delete an organization.
+
+---
+
+### GET `/organization/{id}`
+Get an organization by ID.
+
+**Response `data`**
+```json
+{ "id": 1, "name": "Sunrise Academy", "address": "123 Main St", "isActive": true, "createdAt": "..." }
+```
+
+---
+
+### GET `/organization`
+Get paginated list of organizations. Query params: `page`, `pageSize`, `search`.
+
+---
+
 ## AuditLog Module
 
 All endpoints require auth (`Bearer`). Returns paginated `AuditLog` records.
@@ -452,6 +500,11 @@ Get all audit entries for a specific DB table (matched against `TableName` colum
 | GET | `/city/{id}` | Yes | Get city |
 | GET | `/city` | Yes | List cities |
 | GET | `/city/by-state/{id}` | Yes | Cities by state |
+| POST | `/organization` | Yes | Create organization |
+| PUT | `/organization/{id}` | Yes | Update organization |
+| DELETE | `/organization/{id}` | Yes | Delete organization |
+| GET | `/organization/{id}` | Yes | Get organization |
+| GET | `/organization` | Yes | List organizations |
 | GET | `/encryption/public-key` | No | Get RSA public key |
 | GET | `/audit-log/entity/{name}/{id}` | Yes | Audit history for a record |
 | GET | `/audit-log/user/{userId}` | Yes | Audit entries by user |

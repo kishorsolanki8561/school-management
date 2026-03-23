@@ -31,9 +31,9 @@ Dependency direction: API → Services → DbInfrastructure → Models
 - **Program.cs** — DI composition root; wires all modules via extension methods
 
 ### SchoolManagement.Services
-- **Interfaces/** — service contracts (`IAuthService`, `ICountryService`, `IStateService`, `ICityService`, `IAuditLogService`)
+- **Interfaces/** — service contracts (`IAuthService`, `ICountryService`, `IStateService`, `ICityService`, `IAuditLogService`, `IOrganizationService`)
 - **Implementations/** — business logic classes
-- **Constants/** — raw Dapper SQL queries per domain (`CountryQueries`, `StateQueries`, `CityQueries`)
+- **Constants/** — raw Dapper SQL queries per domain (`CountryQueries`, `StateQueries`, `CityQueries`, `AuditLogQueries`, `AuthQueries`, `OrganizationQueries`)
 - **Extensions/ServicesExtensions.cs** — registers all services as `Scoped`
 
 ### SchoolManagement.DbInfrastructure
@@ -48,7 +48,7 @@ Dependency direction: API → Services → DbInfrastructure → Models
 - **DTOs/** — request and response records per module (`Auth/`, `Master/`)
 - **Mappings/AutoMapperProfile.cs** — single profile with all entity→DTO maps
 - **Common/** — shared types (`ApiResponse<T>`, `PagedResult<T>`, `PaginationRequest`)
-- **Enums/** — `UserRole`
+- **Enums/** — `UserRole` (29 values, Ids 1–29 — used only by `RoleSeeder` for fixed seeded IDs)
 
 ### SchoolManagement.Common
 - **Services/** — `IEncryptionService` (AES-256-GCM + RSA-2048), `IEmailService` (SMTP), `IRequestContext`
@@ -59,9 +59,10 @@ Dependency direction: API → Services → DbInfrastructure → Models
 
 ### SchoolManagement.Seeding
 - **ISeeder** — contract for idempotent seed classes
-- **RoleSeeder** — seeds default roles on first run
+- **RoleSeeder** — seeds 3 default roles (Owner Admin, Super Admin, Admin) on first run
+- **UserSeeder** — seeds default admin user (`superadmin`) + assigns Super Admin role via `UserRoleMapping`
 - **CountrySeeder** — seeds country reference data
-- **DatabaseSeeder** — orchestrates all seeders; called from `app.SeedDatabaseAsync()` at startup
+- **DatabaseSeeder** — orchestrates all seeders in order; called from `app.SeedDatabaseAsync()` at startup
 
 ---
 
@@ -131,7 +132,7 @@ Every business entity extends `BaseEntity`:
 ```csharp
 public abstract class BaseEntity
 {
-    public int Id          { get; set; }
+    public int Id            { get; set; }
     public DateTime CreatedAt   { get; init; }
     public string CreatedBy     { get; init; }
     public DateTime? ModifiedAt { get; set; }
@@ -143,6 +144,8 @@ public abstract class BaseEntity
 ```
 
 Soft delete is applied via a global query filter: `IsDeleted == false` is appended automatically to all EF Core queries.
+
+`Role` additionally carries its own `OrgId` (nullable) to support organisation-scoped roles.
 
 ---
 
@@ -189,6 +192,9 @@ dotnet ef migrations remove \
 | `InitialCreate` | Users, Roles, RefreshTokens, PasswordResetTokens, AuditLogs, ErrorLogs, Countries, States, Cities |
 | `AddScreenNameAndTableNameToAuditLog` | Adds `ScreenName` (nullable) and `TableName` columns + indexes to AuditLogs |
 | `AddBatchIdAndParentAuditLogIdToAuditLog` | Adds `BatchId`, `ParentAuditLogId` columns + indexes to AuditLogs |
+| `AddPayloadAndContextToErrorLog` | Adds `IpAddress`, `Location`, `HttpMethod`, `StatusCode`, `RequestPayload`, `ResponsePayload` to ErrorLogs |
+| `AddOrgIdUserRoleMappingAndIsAdmin` | Adds `OrgId` to all BaseEntity tables; drops `Role` from Users; adds `IsAdmin` to Users; adds all BaseEntity columns to Roles; creates `UserRoleMappings` table |
+| `AddOrganizationAndUserOrgMapping` | Removes `OrgId` from BaseEntity tables (keeps on Roles); creates `Organizations` table; creates `UserOrganizationMappings` table |
 
 > The `Microsoft.EntityFrameworkCore.Design` package is in `SchoolManagement.API.csproj` (as a private dev dependency) to support `dotnet ef` CLI tooling.
 

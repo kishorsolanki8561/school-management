@@ -13,6 +13,7 @@ public static class ServicesExtensions
         services.AddScoped<ICountryService, CountryService>();
         services.AddScoped<IStateService, StateService>();
         services.AddScoped<ICityService, CityService>();
+        services.AddScoped<IOrganizationService, OrganizationService>();
         return services;
     }
 }

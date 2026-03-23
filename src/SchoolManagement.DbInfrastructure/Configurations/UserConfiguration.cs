@@ -11,6 +11,5 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.HasQueryFilter(e => !e.IsDeleted);
         builder.HasIndex(u => u.Username).IsUnique();
         builder.HasIndex(u => u.Email).IsUnique();
-        builder.Property(u => u.Role).HasConversion<string>();
     }
 }
