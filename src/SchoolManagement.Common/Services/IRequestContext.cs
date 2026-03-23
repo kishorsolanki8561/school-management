@@ -7,5 +7,6 @@ public interface IRequestContext
     string? Role { get; set; }
     string? IpAddress { get; set; }
     string? Location { get; set; }
+    string? ScreenName { get; set; }
     string? TraceId { get; set; }
 }

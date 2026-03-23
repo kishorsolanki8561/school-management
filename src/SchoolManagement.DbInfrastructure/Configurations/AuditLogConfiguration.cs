@@ -11,5 +11,7 @@ internal sealed class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
         builder.HasIndex(a => a.EntityName);
         builder.HasIndex(a => a.EntityId);
         builder.HasIndex(a => a.Timestamp);
+        builder.HasIndex(a => a.ScreenName);
+        builder.HasIndex(a => a.TableName);
     }
 }

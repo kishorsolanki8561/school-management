@@ -12,5 +12,7 @@ public sealed class AuditLog
     public string? CreatedBy { get; init; }
     public string? IpAddress { get; init; }
     public string? Location { get; init; }
+    public string? ScreenName { get; init; }
+    public string TableName { get; init; } = string.Empty;
     public DateTime Timestamp { get; init; } = DateTime.UtcNow;
 }

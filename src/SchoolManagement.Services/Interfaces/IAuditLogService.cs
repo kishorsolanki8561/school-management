@@ -7,4 +7,6 @@ public interface IAuditLogService
 {
     Task<PagedResult<AuditLog>> GetByEntityAsync(string entityName, string entityId, PaginationRequest pagination, CancellationToken cancellationToken = default);
     Task<PagedResult<AuditLog>> GetByUserAsync(string userId, PaginationRequest pagination, CancellationToken cancellationToken = default);
+    Task<PagedResult<AuditLog>> GetByScreenAsync(string screenName, PaginationRequest pagination, CancellationToken cancellationToken = default);
+    Task<PagedResult<AuditLog>> GetByTableAsync(string tableName, PaginationRequest pagination, CancellationToken cancellationToken = default);
 }

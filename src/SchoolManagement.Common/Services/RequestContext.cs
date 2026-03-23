@@ -7,5 +7,6 @@ public sealed class RequestContext : IRequestContext
     public string? Role { get; set; }
     public string? IpAddress { get; set; }
     public string? Location { get; set; }
+    public string? ScreenName { get; set; }
     public string? TraceId { get; set; }
 }

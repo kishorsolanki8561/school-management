@@ -84,7 +84,9 @@ public sealed class AuditInterceptor : SaveChangesInterceptor
                 ModifiedBy = _requestContext.UserId ?? "System",
                 CreatedBy = _requestContext.Username,
                 IpAddress = _requestContext.IpAddress,
-                Location = _requestContext.Location
+                Location = _requestContext.Location,
+                ScreenName = _requestContext.ScreenName,
+                TableName = entry.Metadata.GetTableName() ?? entry.Entity.GetType().Name
             });
         }
 

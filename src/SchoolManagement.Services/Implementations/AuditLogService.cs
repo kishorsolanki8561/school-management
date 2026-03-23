@@ -51,4 +51,40 @@ public sealed class AuditLogService : IAuditLogService
             pagination.Page,
             pagination.PageSize);
     }
+
+    public async Task<PagedResult<AuditLog>> GetByScreenAsync(
+        string screenName, PaginationRequest pagination, CancellationToken cancellationToken = default)
+    {
+        var param = new
+        {
+            ScreenName = screenName,
+            pagination.PageSize,
+            Offset = pagination.Offset
+        };
+
+        return await _readRepo.QueryPagedAsync<AuditLog>(
+            AuditLogQueries.GetByScreen,
+            AuditLogQueries.CountByScreen,
+            param,
+            pagination.Page,
+            pagination.PageSize);
+    }
+
+    public async Task<PagedResult<AuditLog>> GetByTableAsync(
+        string tableName, PaginationRequest pagination, CancellationToken cancellationToken = default)
+    {
+        var param = new
+        {
+            TableName = tableName,
+            pagination.PageSize,
+            Offset = pagination.Offset
+        };
+
+        return await _readRepo.QueryPagedAsync<AuditLog>(
+            AuditLogQueries.GetByTable,
+            AuditLogQueries.CountByTable,
+            param,
+            pagination.Page,
+            pagination.PageSize);
+    }
 }

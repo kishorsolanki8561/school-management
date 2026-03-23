@@ -21,6 +21,7 @@ public sealed class RequestContextMiddleware
         var ip = context.Connection.RemoteIpAddress?.ToString();
         requestContext.IpAddress = ip;
         requestContext.Location = await _locationResolver.ResolveAsync(ip);
+        requestContext.ScreenName = context.Request.Headers["X-Screen-Name"].FirstOrDefault();
         requestContext.TraceId = context.TraceIdentifier;
 
         if (context.User.Identity?.IsAuthenticated == true)
