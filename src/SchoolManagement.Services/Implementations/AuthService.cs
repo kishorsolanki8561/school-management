@@ -72,10 +72,6 @@ public sealed class AuthService : IAuthService
             .Select(orgId => new UserOrganizationMapping { User = user, OrgId = orgId })
             .ToList();
 
-        // 5. Single SaveChangesAsync — EF wraps all three inserts in one DB transaction.
-        //    If any insert fails the whole operation rolls back (no orphaned User rows).
-        //    The AuditInterceptor sees User + all mappings in the same batch, so it can
-        //    set ParentAuditLogId on the mapping audit rows correctly.
         await _context.Users.AddAsync(user, cancellationToken);
         if (roleMappings.Count > 0)
             await _context.UserRoleMappings.AddRangeAsync(roleMappings, cancellationToken);
