@@ -41,9 +41,8 @@ public sealed class AuditInterceptor : SaveChangesInterceptor
     {
         if (_pending.Count == 0 || eventData.Context is null) return result;
 
-        var options      = new JsonSerializerOptions { WriteIndented = false };
-        var pendingToLog = new Dictionary<PendingAuditEntry, AuditLog>(ReferenceEqualityComparer.Instance);
-        var logs         = new List<AuditLog>(_pending.Count);
+        var options = new JsonSerializerOptions { WriteIndented = false };
+        var logs    = new List<AuditLog>(_pending.Count);
 
         foreach (var p in _pending)
         {
@@ -60,22 +59,24 @@ public sealed class AuditInterceptor : SaveChangesInterceptor
 
             var log = new AuditLog
             {
-                EntityName = p.Entity.GetType().Name,
-                EntityId   = p.Entity.Id.ToString(),   // real ID available after save
-                Action     = p.Action,
-                OldData    = oldData is { Count: > 0 } ? JsonSerializer.Serialize(oldData, options) : null,
-                NewData    = newData is { Count: > 0 } ? JsonSerializer.Serialize(newData, options) : null,
-                TableName  = p.TableName,
-                BatchId    = p.BatchId,
-                ScreenName = _requestContext.ScreenName,
-                ModifiedBy = _requestContext.UserId ?? "System",
-                CreatedBy  = _requestContext.Username,
-                IpAddress  = _requestContext.IpAddress,
-                Location   = _requestContext.Location,
+                EntityName       = p.Entity.GetType().Name,
+                EntityId         = p.Entity.Id.ToString(),
+                Action           = p.Action,
+                OldData          = oldData is { Count: > 0 } ? JsonSerializer.Serialize(oldData, options) : null,
+                NewData          = newData is { Count: > 0 } ? JsonSerializer.Serialize(newData, options) : null,
+                TableName        = p.TableName,
+                BatchId          = p.BatchId,
+                ScreenName       = _requestContext.ScreenName,
+                ModifiedBy       = _requestContext.UserId ?? "System",
+                CreatedBy        = _requestContext.Username,
+                IpAddress        = _requestContext.IpAddress,
+                Location         = _requestContext.Location,
+                // Parent entity Id (e.g. user.Id) — real value available after the
+                // main SaveChangesAsync has completed and EF has assigned all PKs.
+                ParentAuditLogId = p.ParentPendingEntry?.Entity.Id,
             };
 
             logs.Add(log);
-            pendingToLog[p] = log;
         }
 
         _pending.Clear();
@@ -83,21 +84,6 @@ public sealed class AuditInterceptor : SaveChangesInterceptor
         // AuditLog does not extend BaseEntity — this save will not trigger another audit cycle
         await eventData.Context.Set<AuditLog>().AddRangeAsync(logs, cancellationToken);
         await eventData.Context.SaveChangesAsync(cancellationToken);
-
-        // Resolve ParentAuditLogId now that parent rows have real Ids
-        var needsUpdate = false;
-        foreach (var (p, log) in pendingToLog)
-        {
-            if (p.ParentPendingEntry is not null &&
-                pendingToLog.TryGetValue(p.ParentPendingEntry, out var parentLog))
-            {
-                log.ParentAuditLogId = parentLog.Id;
-                needsUpdate = true;
-            }
-        }
-
-        if (needsUpdate)
-            await eventData.Context.SaveChangesAsync(cancellationToken);
 
         return result;
     }
@@ -137,8 +123,8 @@ public sealed class AuditInterceptor : SaveChangesInterceptor
 
                 case EntityState.Modified:
                     action = "Updated";
-                    // Capture only configured columns that actually changed
-                    foreach (var col in tableConfig.Columns)
+                    // Capture only effective columns (table-specific + defaults) that actually changed
+                    foreach (var col in GetEffectiveColumns(tableConfig))
                     {
                         var prop = entry.Properties.FirstOrDefault(p => p.Metadata.Name == col.PropertyName);
                         if (prop is null || !prop.IsModified) continue;
@@ -148,11 +134,23 @@ public sealed class AuditInterceptor : SaveChangesInterceptor
                     }
                     // Nothing changed on audited columns → skip
                     if (capturedOld.Count == 0) continue;
+
+                    // Only persist the audit row when the change is meaningful:
+                    //   • ModifiedBy is set  (a real user triggered the change)
+                    //   • OR IsDeleted changed  (soft-delete / restore)
+                    //   • OR IsActive changed   (activation / deactivation)
+                    var modifiedByVal = entry.Properties
+                        .FirstOrDefault(p => p.Metadata.Name == "ModifiedBy")
+                        ?.CurrentValue as string;
+                    var hasSensitiveChange = capturedOld.Any(c =>
+                        c.Column.PropertyName is "IsDeleted" or "IsActive");
+
+                    if (string.IsNullOrEmpty(modifiedByVal) && !hasSensitiveChange) continue;
                     break;
 
                 case EntityState.Deleted:
                     action = "Deleted";
-                    foreach (var col in tableConfig.Columns)
+                    foreach (var col in GetEffectiveColumns(tableConfig))
                     {
                         var prop = entry.Properties.FirstOrDefault(p => p.Metadata.Name == col.PropertyName);
                         if (prop is null) continue;
@@ -195,10 +193,11 @@ public sealed class AuditInterceptor : SaveChangesInterceptor
     /// </summary>
     private static IReadOnlyList<PendingColumnValue> ReadFromEntity(BaseEntity entity, AuditTableConfig config)
     {
-        var result = new List<PendingColumnValue>(config.Columns.Count);
-        var type   = entity.GetType();
+        var effectiveCols = GetEffectiveColumns(config);
+        var result        = new List<PendingColumnValue>(effectiveCols.Count);
+        var type          = entity.GetType();
 
-        foreach (var col in config.Columns)
+        foreach (var col in effectiveCols)
         {
             var clrProp = type.GetProperty(col.PropertyName);
             if (clrProp is null) continue;
@@ -206,6 +205,21 @@ public sealed class AuditInterceptor : SaveChangesInterceptor
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Returns the table's explicit columns followed by any <see cref="AuditConfiguration.DefaultColumns"/>
+    /// whose <c>PropertyName</c> is not already covered by the explicit list.
+    /// </summary>
+    private static IReadOnlyList<AuditColumnConfig> GetEffectiveColumns(AuditTableConfig config)
+    {
+        var explicitNames = config.Columns
+            .Select(c => c.PropertyName)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return config.Columns
+            .Concat(AuditConfiguration.DefaultColumns.Where(d => !explicitNames.Contains(d.PropertyName)))
+            .ToList();
     }
 
     /// <summary>
@@ -223,7 +237,7 @@ public sealed class AuditInterceptor : SaveChangesInterceptor
 
         foreach (var cv in values)
         {
-            string? display = cv.RawValue;
+            string? display;
 
             if (cv.Column.Lookup is not null
                 && int.TryParse(cv.RawValue, out var id)
@@ -231,11 +245,35 @@ public sealed class AuditInterceptor : SaveChangesInterceptor
             {
                 display = await ResolveLookupAsync(context, cv.Column.Lookup, id, cancellationToken);
             }
+            else
+            {
+                display = FormatValue(cv.Column, cv.RawValue);
+            }
+
+            // Skip null values — nothing meaningful to record
+            if (display is null) continue;
+
+            // Skip IsDeleted = false — "not deleted" is the default state, no value in recording it
+            if (cv.Column.PropertyName.Equals("IsDeleted", StringComparison.OrdinalIgnoreCase)
+                && cv.RawValue?.Equals("False", StringComparison.OrdinalIgnoreCase) == true) continue;
 
             result[cv.Column.DisplayName] = display;
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Converts a raw CLR value string to its display form.
+    /// Booleans are rendered using the column's BoolTrueDisplay / BoolFalseDisplay
+    /// (default "Yes" / "No") — overridable per column in AuditConfiguration.
+    /// </summary>
+    private static string? FormatValue(AuditColumnConfig col, string? rawValue)
+    {
+        if (rawValue is null) return null;
+        if (rawValue.Equals("True",  StringComparison.OrdinalIgnoreCase)) return col.BoolTrueDisplay;
+        if (rawValue.Equals("False", StringComparison.OrdinalIgnoreCase)) return col.BoolFalseDisplay;
+        return rawValue;
     }
 
     /// <summary>
@@ -278,16 +316,24 @@ public sealed class AuditInterceptor : SaveChangesInterceptor
             var principalType = fk.PrincipalEntityType.ClrType;
             if (!typeof(BaseEntity).IsAssignableFrom(principalType)) continue;
 
-            // Primary: use the navigation property reference (works even when parent Id is still 0)
             var navName = fk.DependentToPrincipal?.Name;
             if (navName is not null)
             {
+                // Path 1: EF Core navigation tracking state
                 var nav = childEntry.Navigation(navName);
                 if (nav.CurrentValue is BaseEntity parentViaNav)
                     return parentViaNav;
+
+                // Path 2: direct CLR property read.
+                // Handles init navigation properties (e.g. User = user set in object
+                // initializer) where UserId is still 0 so the FK-value fallback
+                // below cannot find the parent in the ChangeTracker.
+                var clrProp = childEntry.Entity.GetType().GetProperty(navName);
+                if (clrProp?.GetValue(childEntry.Entity) is BaseEntity parentViaClr)
+                    return parentViaClr;
             }
 
-            // Fallback: find in ChangeTracker by type + FK value.
+            // Path 3: ChangeTracker lookup by FK value (for non-init / already-persisted parents).
             // Only return if actually found — if this FK's principal is not in the
             // current batch, continue to the next FK rather than returning null early.
             var fkProp = fk.Properties[0];

@@ -11,30 +11,40 @@ namespace SchoolManagement.DbInfrastructure.Audit;
 /// </summary>
 public static class AuditConfiguration
 {
+    /// <summary>
+    /// BaseEntity audit fields automatically appended to every configured table's
+    /// column list.  Override a default by adding the same PropertyName explicitly
+    /// in the table's own column list — the explicit entry takes precedence.
+    /// </summary>
+    public static readonly IReadOnlyList<AuditColumnConfig> DefaultColumns = new AuditColumnConfig[]
+    {
+        new("CreatedAt",  "Created At"),
+        new("CreatedBy",  "Created By"),
+        new("ModifiedAt", "Modified At"),
+        new("ModifiedBy", "Modified By"),
+        new("IsDeleted",  "Deleted"),
+        new("IsActive",   "Active"),
+    };
+
     public static readonly IReadOnlyDictionary<string, AuditTableConfig> Tables =
         new Dictionary<string, AuditTableConfig>(StringComparer.OrdinalIgnoreCase)
         {
             // ── Users ────────────────────────────────────────────────────────
             ["Users"] = new AuditTableConfig(
-                new("Username",  "User Name"),
-                new("Email",     "Email"),
-                new("IsActive",  "Active"),
-                new("IsAdmin",   "Is Admin"),
-                new("IsDeleted", "Deleted")),
+                new("Username", "User Name"),
+                new("Email",    "Email"),
+                new("IsAdmin",  "Is Admin")),
 
             // ── Roles ────────────────────────────────────────────────────────
             ["Roles"] = new AuditTableConfig(
                 new("Name",        "Role Name"),
                 new("Description", "Description"),
-                new("IsOrgRole",   "Org Role"),
-                new("IsDeleted",   "Deleted")),
+                new("IsOrgRole",   "Org Role")),
 
             // ── Organizations ─────────────────────────────────────────────────
             ["Organizations"] = new AuditTableConfig(
-                new("Name",      "Organization Name"),
-                new("Address",   "Address"),
-                new("IsActive",  "Active"),
-                new("IsDeleted", "Deleted")),
+                new("Name",    "Organization Name"),
+                new("Address", "Address")),
 
             // ── UserRoleMappings ──────────────────────────────────────────────
             ["UserRoleMappings"] = new AuditTableConfig(
@@ -42,28 +52,22 @@ public static class AuditConfiguration
 
             // ── UserOrganizationMappings ──────────────────────────────────────
             ["UserOrganizationMappings"] = new AuditTableConfig(
-                new AuditColumnConfig("OrgId",  "Organization", new AuditLookup("Organization", "Name"))),
+                new AuditColumnConfig("OrgId", "Organization", new AuditLookup("Organization", "Name"))),
 
             // ── Countries ────────────────────────────────────────────────────
             ["Countries"] = new AuditTableConfig(
-                new("Name",      "Country Name"),
-                new("Code",      "Code"),
-                new("IsActive",  "Active"),
-                new("IsDeleted", "Deleted")),
+                new("Name", "Country Name"),
+                new("Code", "Code")),
 
             // ── States ───────────────────────────────────────────────────────
             ["States"] = new AuditTableConfig(
                 new("Name",      "State Name"),
                 new("Code",      "Code"),
-                new("CountryId", "Country", new AuditLookup("Country", "Name")),
-                new("IsActive",  "Active"),
-                new("IsDeleted", "Deleted")),
+                new("CountryId", "Country", new AuditLookup("Country", "Name"))),
 
             // ── Cities ───────────────────────────────────────────────────────
             ["Cities"] = new AuditTableConfig(
                 new("Name",    "City Name"),
-                new("StateId", "State",    new AuditLookup("State", "Name")),
-                new("IsActive",  "Active"),
-                new("IsDeleted", "Deleted")),
+                new("StateId", "State", new AuditLookup("State", "Name"))),
         };
 }

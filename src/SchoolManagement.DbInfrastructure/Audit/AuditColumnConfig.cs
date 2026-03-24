@@ -17,10 +17,23 @@ public sealed class AuditColumnConfig
     /// </summary>
     public AuditLookup? Lookup { get; }
 
-    public AuditColumnConfig(string propertyName, string displayName, AuditLookup? lookup = null)
+    /// <summary>Text shown when a boolean property is <c>true</c>. Default: "Yes".</summary>
+    public string BoolTrueDisplay  { get; }
+
+    /// <summary>Text shown when a boolean property is <c>false</c>. Default: "No".</summary>
+    public string BoolFalseDisplay { get; }
+
+    public AuditColumnConfig(
+        string       propertyName,
+        string       displayName,
+        AuditLookup? lookup           = null,
+        string       boolTrueDisplay  = "Yes",
+        string       boolFalseDisplay = "No")
     {
-        PropertyName = propertyName;
-        DisplayName  = displayName;
-        Lookup       = lookup;
+        PropertyName     = propertyName;
+        DisplayName      = displayName;
+        Lookup           = lookup;
+        BoolTrueDisplay  = boolTrueDisplay;
+        BoolFalseDisplay = boolFalseDisplay;
     }
 }
