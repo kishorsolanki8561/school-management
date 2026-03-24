@@ -62,13 +62,5 @@ public static class AppMessages
         public static string AlreadyExists(string name)
             => $"An organization named '{name}' already exists.";
 
-        public static string InvalidIds(IEnumerable<int> ids)
-            => $"The following organization IDs do not exist: {string.Join(", ", ids)}.";
-    }
-
-    public static class Role
-    {
-        public static string InvalidIds(IEnumerable<int> ids)
-            => $"The following role IDs do not exist: {string.Join(", ", ids)}.";
     }
 }

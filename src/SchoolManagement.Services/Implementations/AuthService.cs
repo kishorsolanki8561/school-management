@@ -51,39 +51,9 @@ public sealed class AuthService : IAuthService
         if (exists)
             throw new InvalidOperationException(AppMessages.Auth.UsernameTaken);
 
-        // 2. Validate RoleIds — all supplied IDs must exist in the Roles table
-        var distinctRoleIds = request.RoleIds is { Count: > 0 }
-            ? request.RoleIds.Distinct().ToList()
-            : new List<int>();
-
-        if (distinctRoleIds.Count > 0)
-        {
-            var existingRoleIds = await _context.Roles
-                .Where(r => distinctRoleIds.Contains(r.Id))
-                .Select(r => r.Id)
-                .ToListAsync(cancellationToken);
-
-            var invalidRoleIds = distinctRoleIds.Except(existingRoleIds).ToList();
-            if (invalidRoleIds.Count > 0)
-                throw new InvalidOperationException(AppMessages.Role.InvalidIds(invalidRoleIds));
-        }
-
-        // 3. Validate OrgIds — all supplied IDs must exist in the Organizations table
-        var distinctOrgIds = request.OrgIds is { Count: > 0 }
-            ? request.OrgIds.Distinct().ToList()
-            : new List<int>();
-
-        if (distinctOrgIds.Count > 0)
-        {
-            var existingOrgIds = await _context.Organizations
-                .Where(o => distinctOrgIds.Contains(o.Id))
-                .Select(o => o.Id)
-                .ToListAsync(cancellationToken);
-
-            var invalidOrgIds = distinctOrgIds.Except(existingOrgIds).ToList();
-            if (invalidOrgIds.Count > 0)
-                throw new InvalidOperationException(AppMessages.Organization.InvalidIds(invalidOrgIds));
-        }
+        // 2. Keep only non-zero RoleIds / OrgIds
+        var distinctRoleIds = request.RoleIds?.Where(s => s != 0).Distinct().ToList() ?? new List<int>();
+        var distinctOrgIds  = request.OrgIds?.Where(s => s != 0).Distinct().ToList() ?? new List<int>();
 
         // 4. Build user + all mappings — use User navigation property so EF Core resolves
         //    the FK after the INSERT and the AuditInterceptor can link ParentAuditLogId

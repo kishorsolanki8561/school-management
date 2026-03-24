@@ -146,51 +146,30 @@ public sealed class AuthServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task RegisterAsync_WithInvalidRoleIds_ThrowsInvalidOperation()
+    public async Task RegisterAsync_WithZeroRoleIdOrOrgId_ZeroIsIgnored()
     {
-        // Only role 1 exists — role 99 does not
+        // Zero IDs must be silently filtered out — no mapping rows created for them
         await _context.Roles.AddAsync(
             new SchoolManagement.Models.Entities.Role { Id = 1, Name = "Owner Admin" });
-        await _context.SaveChangesAsync();
-
-        var act = () => _sut.RegisterAsync(new RegisterRequest
-        {
-            Username = "testuser",
-            Email    = "test@test.com",
-            Password = "Pass1!",
-            RoleIds  = new List<int> { 1, 99 },
-        });
-
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*99*");
-
-        // User must NOT be committed (transaction rolled back by validation guard)
-        var saved = await _context.Users.FirstOrDefaultAsync(u => u.Username == "testuser");
-        saved.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task RegisterAsync_WithInvalidOrgIds_ThrowsInvalidOperation()
-    {
-        // Only org 1 exists — org 99 does not
         await _context.Organizations.AddAsync(
             new SchoolManagement.Models.Entities.Organization { Id = 1, Name = "Org A" });
         await _context.SaveChangesAsync();
 
-        var act = () => _sut.RegisterAsync(new RegisterRequest
+        await _sut.RegisterAsync(new RegisterRequest
         {
-            Username = "testuser2",
-            Email    = "test2@test.com",
+            Username = "zerotest",
+            Email    = "zero@test.com",
             Password = "Pass1!",
-            OrgIds   = new List<int> { 1, 99 },
+            RoleIds  = new List<int> { 1, 0 },   // 0 must be ignored
+            OrgIds   = new List<int> { 1, 0 },   // 0 must be ignored
         });
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*99*");
+        var user = await _context.Users.FirstAsync(u => u.Username == "zerotest");
+        var roleMappings = await _context.UserRoleMappings.Where(m => m.UserId == user.Id).ToListAsync();
+        var orgMappings  = await _context.UserOrganizationMappings.Where(m => m.UserId == user.Id).ToListAsync();
 
-        // User must NOT be committed (transaction rolled back by validation guard)
-        var saved = await _context.Users.FirstOrDefaultAsync(u => u.Username == "testuser2");
-        saved.Should().BeNull();
+        roleMappings.Should().HaveCount(1);   // only Id=1, zero skipped
+        orgMappings.Should().HaveCount(1);    // only Id=1, zero skipped
     }
 
     [Fact]
