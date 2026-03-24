@@ -74,4 +74,14 @@ public sealed class MenuMasterController : ControllerBase
         var result = await _menuService.GetAllAsync(pagination, cancellationToken);
         return Ok(ApiResponse<PagedResult<MenuResponse>>.Ok(result, HttpContext.TraceIdentifier));
     }
+
+    /// <summary>Get all permission details for a role with menu breadcrumb, page, module and action.</summary>
+    [HttpGet("permission-details/{roleId:int}")]
+    [SwaggerOperation(Summary = "Get Permission Details By Role", Tags = new[] { "Master - Menu" })]
+    [ProducesResponseType(typeof(ApiResponse<IList<PermissionDetailResponse>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetPermissionDetails(int roleId, CancellationToken cancellationToken)
+    {
+        var result = await _menuService.GetPermissionDetailsAsync(roleId, cancellationToken);
+        return Ok(ApiResponse<IList<PermissionDetailResponse>>.Ok(result, HttpContext.TraceIdentifier));
+    }
 }

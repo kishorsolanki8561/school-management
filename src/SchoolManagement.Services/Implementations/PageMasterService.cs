@@ -43,33 +43,38 @@ public sealed class PageMasterService : IPageMasterService
 
         var page = _mapper.Map<PageMaster>(request);
 
-        await using var tx = await _context.Database.BeginTransactionAsync(ct);
-        try
+        PageResponse? result = null;
+        await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
         {
-            await _context.PageMasters.AddAsync(page, ct);
-            await _context.SaveChangesAsync(ct);
-
-            if (request.Modules.Count > 0)
+            await using var tx = await _context.Database.BeginTransactionAsync(ct);
+            try
             {
-                var roleIds = await _context.Roles.Select(r => r.Id).ToListAsync(ct);
-
-                var existingActions = new HashSet<(int moduleId, ActionType action)>();
-                var existingPerms   = new HashSet<(int moduleId, ActionType action, int roleId)>();
-
-                foreach (var moduleInput in request.Modules)
-                    await SeedModuleAsync(page, moduleInput, roleIds, existingActions, existingPerms, ct);
-
+                await _context.PageMasters.AddAsync(page, ct);
                 await _context.SaveChangesAsync(ct);
-            }
 
-            await tx.CommitAsync(ct);
-            return _mapper.Map<PageResponse>(page);
-        }
-        catch
-        {
-            await tx.RollbackAsync(ct);
-            throw;
-        }
+                if (request.Modules.Count > 0)
+                {
+                    var roleIds = await _context.Roles.Select(r => r.Id).ToListAsync(ct);
+
+                    var existingActions = new HashSet<(int moduleId, ActionType action)>();
+                    var existingPerms   = new HashSet<(int moduleId, ActionType action, int roleId)>();
+
+                    foreach (var moduleInput in request.Modules)
+                        await SeedModuleAsync(page, moduleInput, roleIds, existingActions, existingPerms, ct);
+
+                    await _context.SaveChangesAsync(ct);
+                }
+
+                await tx.CommitAsync(ct);
+                result = _mapper.Map<PageResponse>(page);
+            }
+            catch
+            {
+                await tx.RollbackAsync(ct);
+                throw;
+            }
+        });
+        return result!;
     }
 
     public async Task<PageResponse> UpdatePageAsync(int id, UpdatePageRequest request, CancellationToken ct = default)
@@ -77,54 +82,59 @@ public sealed class PageMasterService : IPageMasterService
         var page = await _context.PageMasters.FindAsync(new object[] { id }, ct)
             ?? throw new KeyNotFoundException(AppMessages.PageMaster.NotFound(id));
 
-        await using var tx = await _context.Database.BeginTransactionAsync(ct);
-        try
+        PageResponse? result = null;
+        await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
         {
-            _mapper.Map(request, page);
-
-            if (request.Modules is not null)
+            await using var tx = await _context.Database.BeginTransactionAsync(ct);
+            try
             {
-                var roleIds = await _context.Roles.Select(r => r.Id).ToListAsync(ct);
+                _mapper.Map(request, page);
 
-                var existingActions = (await _context.PageMasterModuleActionMappings
-                    .Where(m => m.PageId == id)
-                    .Select(m => new { m.PageModuleId, m.ActionId })
-                    .ToListAsync(ct))
-                    .Select(x => (x.PageModuleId, x.ActionId))
-                    .ToHashSet();
-
-                var existingPerms = (await _context.MenuAndPagePermissions
-                    .Where(p => p.PageId == id)
-                    .Select(p => new { p.PageModuleId, p.ActionId, p.RoleId })
-                    .ToListAsync(ct))
-                    .Select(x => (x.PageModuleId, x.ActionId, x.RoleId))
-                    .ToHashSet();
-
-                foreach (var moduleInput in request.Modules)
+                if (request.Modules is not null)
                 {
-                    var module = await _context.PageMasterModules
-                        .FirstOrDefaultAsync(m => m.PageId == page.Id && m.Name == moduleInput.Name, ct);
+                    var roleIds = await _context.Roles.Select(r => r.Id).ToListAsync(ct);
 
-                    if (module is null)
+                    var existingActions = (await _context.PageMasterModuleActionMappings
+                        .Where(m => m.PageId == id)
+                        .Select(m => new { m.PageModuleId, m.ActionId })
+                        .ToListAsync(ct))
+                        .Select(x => (x.PageModuleId, x.ActionId))
+                        .ToHashSet();
+
+                    var existingPerms = (await _context.MenuAndPagePermissions
+                        .Where(p => p.PageId == id)
+                        .Select(p => new { p.PageModuleId, p.ActionId, p.RoleId })
+                        .ToListAsync(ct))
+                        .Select(x => (x.PageModuleId, x.ActionId, x.RoleId))
+                        .ToHashSet();
+
+                    foreach (var moduleInput in request.Modules)
                     {
-                        module = new PageMasterModule { Name = moduleInput.Name, PageId = page.Id };
-                        await _context.PageMasterModules.AddAsync(module, ct);
-                        await _context.SaveChangesAsync(ct);
+                        var module = await _context.PageMasterModules
+                            .FirstOrDefaultAsync(m => m.PageId == page.Id && m.Name == moduleInput.Name, ct);
+
+                        if (module is null)
+                        {
+                            module = new PageMasterModule { Name = moduleInput.Name, PageId = page.Id };
+                            await _context.PageMasterModules.AddAsync(module, ct);
+                            await _context.SaveChangesAsync(ct);
+                        }
+
+                        await SeedActionsForModule(page, module, moduleInput, roleIds, existingActions, existingPerms, ct);
                     }
-
-                    await SeedActionsForModule(page, module, moduleInput, roleIds, existingActions, existingPerms, ct);
                 }
-            }
 
-            await _context.SaveChangesAsync(ct);
-            await tx.CommitAsync(ct);
-            return _mapper.Map<PageResponse>(page);
-        }
-        catch
-        {
-            await tx.RollbackAsync(ct);
-            throw;
-        }
+                await _context.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+                result = _mapper.Map<PageResponse>(page);
+            }
+            catch
+            {
+                await tx.RollbackAsync(ct);
+                throw;
+            }
+        });
+        return result!;
     }
 
     public async Task DeletePageAsync(int id, CancellationToken ct = default)
@@ -132,31 +142,34 @@ public sealed class PageMasterService : IPageMasterService
         var page = await _context.PageMasters.FindAsync(new object[] { id }, ct)
             ?? throw new KeyNotFoundException(AppMessages.PageMaster.NotFound(id));
 
-        await using var tx = await _context.Database.BeginTransactionAsync(ct);
-        try
+        await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
         {
-            var permissions = await _context.MenuAndPagePermissions
-                .Where(p => p.PageId == id).ToListAsync(ct);
-            foreach (var p in permissions) p.IsDeleted = true;
+            await using var tx = await _context.Database.BeginTransactionAsync(ct);
+            try
+            {
+                var permissions = await _context.MenuAndPagePermissions
+                    .Where(p => p.PageId == id).ToListAsync(ct);
+                foreach (var p in permissions) p.IsDeleted = true;
 
-            var actions = await _context.PageMasterModuleActionMappings
-                .Where(a => a.PageId == id).ToListAsync(ct);
-            foreach (var a in actions) a.IsDeleted = true;
+                var actions = await _context.PageMasterModuleActionMappings
+                    .Where(a => a.PageId == id).ToListAsync(ct);
+                foreach (var a in actions) a.IsDeleted = true;
 
-            var modules = await _context.PageMasterModules
-                .Where(m => m.PageId == id).ToListAsync(ct);
-            foreach (var m in modules) m.IsDeleted = true;
+                var modules = await _context.PageMasterModules
+                    .Where(m => m.PageId == id).ToListAsync(ct);
+                foreach (var m in modules) m.IsDeleted = true;
 
-            page.IsDeleted = true;
+                page.IsDeleted = true;
 
-            await _context.SaveChangesAsync(ct);
-            await tx.CommitAsync(ct);
-        }
-        catch
-        {
-            await tx.RollbackAsync(ct);
-            throw;
-        }
+                await _context.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+            }
+            catch
+            {
+                await tx.RollbackAsync(ct);
+                throw;
+            }
+        });
     }
 
     public Task<PageResponse?> GetPageByIdAsync(int id, CancellationToken ct = default)

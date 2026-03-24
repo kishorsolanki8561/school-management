@@ -30,7 +30,7 @@ public sealed class MenuMasterService : IMenuMasterService
         {
             Name                   = request.Name,
             HasChild               = request.HasChild,
-            ParentMenuId           = request.ParentMenuId,
+            ParentMenuId           = request.ParentMenuId == 0 ? null : request.ParentMenuId,
             Position               = request.Position,
             IconClass              = request.IconClass,
             IsUseMenuForOwnerAdmin = request.IsUseMenuForOwnerAdmin,
@@ -49,7 +49,7 @@ public sealed class MenuMasterService : IMenuMasterService
 
         menu.Name                   = request.Name;
         menu.HasChild               = request.HasChild;
-        menu.ParentMenuId           = request.ParentMenuId;
+        menu.ParentMenuId           = request.ParentMenuId == 0 ? null : request.ParentMenuId;
         menu.Position               = request.Position;
         menu.IconClass              = request.IconClass;
         menu.IsActive               = request.IsActive;
@@ -65,51 +65,49 @@ public sealed class MenuMasterService : IMenuMasterService
         var menu = await _context.MenuMasters.FindAsync(new object[] { id }, cancellationToken)
             ?? throw new KeyNotFoundException(AppMessages.MenuMaster.NotFound(id));
 
-        await using var tx = await _context.Database.BeginTransactionAsync(cancellationToken);
-        try
+        await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
         {
-            // Collect page IDs belonging to this menu (used for child table queries)
-            var pageIds = await _context.PageMasters
-                .Where(p => p.MenuId == id)
-                .Select(p => p.Id)
-                .ToListAsync(cancellationToken);
-
-            if (pageIds.Count > 0)
+            await using var tx = await _context.Database.BeginTransactionAsync(cancellationToken);
+            try
             {
-                // MenuAndPagePermissions — filter by MenuId (covers all pages of this menu)
-                var permissions = await _context.MenuAndPagePermissions
+                var pageIds = await _context.PageMasters
                     .Where(p => p.MenuId == id)
+                    .Select(p => p.Id)
                     .ToListAsync(cancellationToken);
-                foreach (var p in permissions) p.IsDeleted = true;
 
-                // PageMasterModuleActionMappings
-                var actions = await _context.PageMasterModuleActionMappings
-                    .Where(a => pageIds.Contains(a.PageId))
-                    .ToListAsync(cancellationToken);
-                foreach (var a in actions) a.IsDeleted = true;
+                if (pageIds.Count > 0)
+                {
+                    var permissions = await _context.MenuAndPagePermissions
+                        .Where(p => p.MenuId == id)
+                        .ToListAsync(cancellationToken);
+                    foreach (var p in permissions) p.IsDeleted = true;
 
-                // PageMasterModules
-                var modules = await _context.PageMasterModules
-                    .Where(m => pageIds.Contains(m.PageId))
-                    .ToListAsync(cancellationToken);
-                foreach (var m in modules) m.IsDeleted = true;
+                    var actions = await _context.PageMasterModuleActionMappings
+                        .Where(a => pageIds.Contains(a.PageId))
+                        .ToListAsync(cancellationToken);
+                    foreach (var a in actions) a.IsDeleted = true;
 
-                // PageMasters
-                var pages = await _context.PageMasters
-                    .Where(p => p.MenuId == id)
-                    .ToListAsync(cancellationToken);
-                foreach (var p in pages) p.IsDeleted = true;
+                    var modules = await _context.PageMasterModules
+                        .Where(m => pageIds.Contains(m.PageId))
+                        .ToListAsync(cancellationToken);
+                    foreach (var m in modules) m.IsDeleted = true;
+
+                    var pages = await _context.PageMasters
+                        .Where(p => p.MenuId == id)
+                        .ToListAsync(cancellationToken);
+                    foreach (var p in pages) p.IsDeleted = true;
+                }
+
+                menu.IsDeleted = true;
+                await _context.SaveChangesAsync(cancellationToken);
+                await tx.CommitAsync(cancellationToken);
             }
-
-            menu.IsDeleted = true;
-            await _context.SaveChangesAsync(cancellationToken);
-            await tx.CommitAsync(cancellationToken);
-        }
-        catch
-        {
-            await tx.RollbackAsync(cancellationToken);
-            throw;
-        }
+            catch
+            {
+                await tx.RollbackAsync(cancellationToken);
+                throw;
+            }
+        });
     }
 
     public Task<MenuResponse?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
@@ -122,4 +120,109 @@ public sealed class MenuMasterService : IMenuMasterService
             new { Search = string.IsNullOrWhiteSpace(request.Search) ? null : request.Search, Offset = (request.Page - 1) * request.PageSize, request.PageSize },
             request.Page,
             request.PageSize);
+
+    /// <summary>
+    /// Returns breadcrumb object for the given menu <paramref name="id"/>.
+    /// Equivalent to the SQL function Fn_GetMenus(@id).
+    /// FullPath example: "Settings, Users, Permissions"
+    /// Nodes: ordered list of { Id, Name } from root down to the requested menu.
+    /// </summary>
+    public async Task<BreadcrumbResponse> GetBreadcrumbAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var lookup = await BuildMenuLookupAsync(cancellationToken);
+
+        if (!lookup.TryGetValue(id, out var target))
+            throw new KeyNotFoundException(AppMessages.MenuMaster.NotFound(id));
+
+        var nodes = BuildBreadcrumbNodes(lookup, id);
+
+        return new BreadcrumbResponse
+        {
+            Id       = target.Id,
+            Name     = target.Name,
+            FullPath = string.Join(", ", nodes.Select(n => n.Name)),
+            Nodes    = nodes,
+        };
+    }
+
+    /// <summary>
+    /// Returns all permission detail rows for a given <paramref name="roleId"/>.
+    /// Ordered by MenuName → PageName.
+    /// </summary>
+    public async Task<IList<PermissionDetailResponse>> GetPermissionDetailsAsync(
+        int roleId,
+        CancellationToken cancellationToken = default)
+    {
+        // ── 1. Load menu tree for breadcrumb resolution (single round-trip) ──
+        var menuLookup = await BuildMenuLookupAsync(cancellationToken);
+
+        // ── 2. Flat join filtered by RoleId: Permissions ⋈ Pages ⋈ Modules ─
+        var rows = await (
+            from mp in _context.MenuAndPagePermissions.AsNoTracking()
+            join p  in _context.PageMasters.AsNoTracking()       on mp.PageId       equals p.Id
+            join m  in _context.PageMasterModules.AsNoTracking() on mp.PageModuleId equals m.Id
+            where mp.RoleId == roleId
+            orderby mp.MenuId, p.Name
+            select new
+            {
+                mp.Id,
+                mp.MenuId,
+                PageName       = p.Name,
+                mp.PageModuleId,
+                PageModuleName = m.Name,
+                mp.ActionId,
+                mp.IsAllowed,
+                mp.RoleId,
+            })
+            .ToListAsync(cancellationToken);
+
+        // ── 3. Map → response, resolving breadcrumb from in-memory lookup ───
+        return rows.Select(r => new PermissionDetailResponse
+        {
+            Id             = r.Id,
+            MenuName       = menuLookup.ContainsKey(r.MenuId)
+                                 ? string.Join(", ", BuildBreadcrumbNodes(menuLookup, r.MenuId).Select(n => n.Name))
+                                 : string.Empty,
+            PageName       = r.PageName,
+            PageModuleId   = r.PageModuleId,
+            PageModuleName = r.PageModuleName,
+            ActionId       = r.ActionId,
+            IsAllowed      = r.IsAllowed,
+            RoleId         = r.RoleId,
+        }).ToList();
+    }
+
+    // ── private helpers ───────────────────────────────────────────────────────
+
+    /// <summary>Loads all active, non-deleted menus into an Id-keyed lookup.</summary>
+    private async Task<Dictionary<int, MenuNode>> BuildMenuLookupAsync(CancellationToken ct)
+    {
+        var menus = await _context.MenuMasters
+            .Where(m => m.IsActive && !m.IsDeleted)
+            .Select(m => new MenuNode(m.Id, m.Name, m.ParentMenuId))
+            .ToListAsync(ct);
+
+        return menus.ToDictionary(m => m.Id);
+    }
+
+    /// <summary>Walks up from <paramref name="menuId"/> to root, returns ordered nodes root → target.</summary>
+    private static IList<BreadcrumbNodeResponse> BuildBreadcrumbNodes(Dictionary<int, MenuNode> lookup, int menuId)
+    {
+        var nodes   = new List<BreadcrumbNodeResponse>();
+        var current = lookup.GetValueOrDefault(menuId);
+
+        while (current is not null)
+        {
+            nodes.Add(new BreadcrumbNodeResponse { Id = current.Id, Name = current.Name });
+            current = current.ParentMenuId.HasValue
+                      && lookup.TryGetValue(current.ParentMenuId.Value, out var parent)
+                          ? parent
+                          : null;
+        }
+
+        nodes.Reverse();   // root → target
+        return nodes;
+    }
+
+    private sealed record MenuNode(int Id, string Name, int? ParentMenuId);
 }

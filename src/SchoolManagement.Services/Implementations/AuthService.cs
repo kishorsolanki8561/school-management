@@ -9,8 +9,11 @@ using SchoolManagement.Common.Constants;
 using SchoolManagement.Common.Services;
 using SchoolManagement.Common.Utilities;
 using SchoolManagement.DbInfrastructure.Context;
+using SchoolManagement.DbInfrastructure.Repositories.Interfaces;
 using SchoolManagement.Models.DTOs.Auth;
 using SchoolManagement.Models.Entities;
+using SchoolManagement.Models.Enums;
+using SchoolManagement.Services.Constants;
 using SchoolManagement.Services.Interfaces;
 
 namespace SchoolManagement.Services.Implementations;
@@ -18,15 +21,18 @@ namespace SchoolManagement.Services.Implementations;
 public sealed class AuthService : IAuthService
 {
     private readonly SchoolManagementDbContext _context;
-    private readonly IEmailService _emailService;
-    private readonly JwtSettings _jwtSettings;
-    private readonly EmailSettings _emailSettings;
+    private readonly IEmailService            _emailService;
+    private readonly IReadRepository          _readRepo;
+    private readonly JwtSettings              _jwtSettings;
+    private readonly EmailSettings            _emailSettings;
 
-    public AuthService(SchoolManagementDbContext context, IEmailService emailService)
+    public AuthService(SchoolManagementDbContext context, IEmailService emailService,
+                       IReadRepository readRepo)
     {
-        _context = context;
-        _emailService = emailService;
-        _jwtSettings = InitializeConfiguration.JwtSettings;
+        _context       = context;
+        _emailService  = emailService;
+        _readRepo      = readRepo;
+        _jwtSettings   = InitializeConfiguration.JwtSettings;
         _emailSettings = InitializeConfiguration.EmailSettings;
     }
 
@@ -189,18 +195,19 @@ public sealed class AuthService : IAuthService
 
     private async Task<LoginResponse> GenerateTokensAsync(User user, CancellationToken cancellationToken)
     {
-        // Load role names from UserRoleMapping for JWT claims and LoginResponse
-        var roleNames = await _context.UserRoleMappings
+        // Load role names + ids in one projection (no Include needed)
+        var roleMappings = await _context.UserRoleMappings
             .Where(urm => urm.UserId == user.Id && !urm.IsDeleted)
-            .Include(urm => urm.Role)
-            .Select(urm => urm.Role!.Name)
+            .Select(urm => new { urm.RoleId, RoleName = urm.Role!.Name })
             .ToListAsync(cancellationToken);
 
-        var primaryRole = roleNames.FirstOrDefault() ?? string.Empty;
+        var roleNames    = roleMappings.Select(r => r.RoleName).ToList();
+        var roleIds      = roleMappings.Select(r => r.RoleId).ToList();
+        var isOwnerAdmin = roleIds.Contains((int)UserRole.OwnerAdmin);
 
-        var accessToken = GenerateAccessToken(user, roleNames);
+        var accessToken       = GenerateAccessToken(user, roleNames);
         var refreshTokenValue = GenerateRefreshTokenValue();
-        var expiry = DateTimeUtility.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes);
+        var expiry            = DateTimeUtility.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes);
 
         var refreshToken = new RefreshToken
         {
@@ -212,15 +219,94 @@ public sealed class AuthService : IAuthService
         await _context.RefreshTokens.AddAsync(refreshToken, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
 
+        // Build dynamic menu tree — exactly 2 SQL queries regardless of tree depth
+        var menus = roleIds.Count > 0
+            ? await GetDynamicMenusAsync(roleIds, isOwnerAdmin, cancellationToken)
+            : new List<DynamicMenuResponse>();
+
         return new LoginResponse
         {
             AccessToken       = accessToken,
             RefreshToken      = refreshTokenValue,
             AccessTokenExpiry = expiry,
             Username          = user.Username,
-            Role              = primaryRole
+            Role              = roleNames.FirstOrDefault() ?? string.Empty,
+            Menus             = menus,
         };
     }
+
+    /// <summary>
+    /// Fetches the full menu tree visible to the given roles in exactly 3 SQL queries,
+    /// then assembles the parent→child→pages→modules→actions hierarchy in memory.
+    /// </summary>
+    private async Task<IList<DynamicMenuResponse>> GetDynamicMenusAsync(
+        IList<int> roleIds, bool isOwnerAdmin, CancellationToken ct)
+    {
+        var param = new { RoleIds = roleIds.ToArray(), IsOwnerAdmin = isOwnerAdmin ? 1 : 0 };
+
+        // Query 1: all visible menus (flat)
+        var flatMenus = (await _readRepo.QueryAsync<DynamicMenuResponse>(
+                             AuthQueries.GetDynamicMenus,
+                             new { param.RoleIds }))
+                        .ToList();
+
+        if (flatMenus.Count == 0)
+            return new List<DynamicMenuResponse>();
+
+        // Query 2: all permitted pages across every menu in one shot
+        var flatPages = (await _readRepo.QueryAsync<DynamicPageResponse>(
+                             AuthQueries.GetDynamicPages, param))
+                        .ToList();
+
+        // Query 3: all permitted module+action rows across every page in one shot
+        var moduleRows = (await _readRepo.QueryAsync<ModuleActionRow>(
+                              AuthQueries.GetDynamicModules,
+                              new { param.RoleIds }))
+                         .ToList();
+
+        // Build modules: group (PageId, ModuleId, ModuleName) → collect ActionIds
+        var modulesByPage = moduleRows
+            .GroupBy(r => new { r.PageId, r.ModuleId, r.ModuleName })
+            .Select(g => new DynamicModuleResponse
+            {
+                Id      = g.Key.ModuleId,
+                Name    = g.Key.ModuleName,
+                PageId  = g.Key.PageId,
+                Actions = g.Select(r => r.ActionId).ToList(),
+            })
+            .GroupBy(m => m.PageId)
+            .ToDictionary(g => g.Key, g => (IList<DynamicModuleResponse>)g.ToList());
+
+        // Assign modules to pages
+        foreach (var page in flatPages)
+            page.Modules = modulesByPage.GetValueOrDefault(page.Id, new List<DynamicModuleResponse>());
+
+        // Group pages by MenuId and assign to menus
+        var pagesByMenu = flatPages
+            .GroupBy(p => p.MenuId)
+            .ToDictionary(g => g.Key, g => (IList<DynamicPageResponse>)g.ToList());
+
+        var menuById = flatMenus.ToDictionary(m => m.Id);
+        foreach (var menu in flatMenus)
+            menu.Pages = pagesByMenu.GetValueOrDefault(menu.Id, new List<DynamicPageResponse>());
+
+        // Wire children to their parent nodes
+        foreach (var menu in flatMenus.Where(m => m.ParentMenuId.HasValue))
+        {
+            if (menuById.TryGetValue(menu.ParentMenuId!.Value, out var parent))
+                parent.Children.Add(menu);
+        }
+
+        // Return only root nodes; children are already nested
+        return flatMenus.Where(m => m.ParentMenuId == null).ToList();
+    }
+
+    /// <summary>Flat projection row returned by <see cref="AuthQueries.GetDynamicModules"/>.</summary>
+    private sealed record ModuleActionRow(
+        int        ModuleId,
+        string     ModuleName,
+        int        PageId,
+        ActionType ActionId);
 
     private string GenerateAccessToken(User user, IEnumerable<string> roleNames)
     {

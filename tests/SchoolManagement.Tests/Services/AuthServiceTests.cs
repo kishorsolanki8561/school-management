@@ -6,6 +6,7 @@ using SchoolManagement.Common.Configuration;
 using SchoolManagement.Common.Services;
 using SchoolManagement.Common.Utilities;
 using SchoolManagement.DbInfrastructure.Context;
+using SchoolManagement.DbInfrastructure.Repositories.Interfaces;
 using SchoolManagement.Models.DTOs.Auth;
 using SchoolManagement.Models.Entities;
 using SchoolManagement.Services.Implementations;
@@ -16,7 +17,8 @@ namespace SchoolManagement.Tests.Services;
 public sealed class AuthServiceTests : IDisposable
 {
     private readonly SchoolManagementDbContext _context;
-    private readonly Mock<IEmailService> _emailServiceMock = new();
+    private readonly Mock<IEmailService>    _emailServiceMock = new();
+    private readonly Mock<IReadRepository>  _readRepoMock     = new();
     private readonly AuthService _sut;
 
     public AuthServiceTests()
@@ -44,7 +46,17 @@ public sealed class AuthServiceTests : IDisposable
             .Options;
 
         _context = new SchoolManagementDbContext(options);
-        _sut = new AuthService(_context, _emailServiceMock.Object);
+
+        // IReadRepository is not exercised in unit tests (Dapper hits a real DB);
+        // return empty collections so tree-building code is a no-op in tests.
+        _readRepoMock
+            .Setup(r => r.QueryAsync<DynamicMenuResponse>(It.IsAny<string>(), It.IsAny<object?>()))
+            .ReturnsAsync(Enumerable.Empty<DynamicMenuResponse>());
+        _readRepoMock
+            .Setup(r => r.QueryAsync<DynamicPageResponse>(It.IsAny<string>(), It.IsAny<object?>()))
+            .ReturnsAsync(Enumerable.Empty<DynamicPageResponse>());
+
+        _sut = new AuthService(_context, _emailServiceMock.Object, _readRepoMock.Object);
     }
 
     public void Dispose() => _context.Dispose();

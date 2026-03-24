@@ -33,3 +33,17 @@ public sealed class MenuResponse
     public bool     IsUseMenuForOwnerAdmin { get; init; }
     public DateTime CreatedAt             { get; init; }
 }
+
+public sealed class BreadcrumbNodeResponse
+{
+    public int    Id   { get; init; }
+    public string Name { get; init; } = string.Empty;
+}
+
+public sealed class BreadcrumbResponse
+{
+    public int                              Id       { get; init; }
+    public string                           Name     { get; init; } = string.Empty;
+    public string                           FullPath { get; init; } = string.Empty;   // "Root, Parent, Current"
+    public IList<BreadcrumbNodeResponse>    Nodes    { get; init; } = new List<BreadcrumbNodeResponse>();
+}
