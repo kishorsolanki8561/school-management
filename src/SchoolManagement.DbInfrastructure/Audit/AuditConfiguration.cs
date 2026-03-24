@@ -69,5 +69,34 @@ public static class AuditConfiguration
             ["Cities"] = new AuditTableConfig(
                 new("Name",    "City Name"),
                 new("StateId", "State", new AuditLookup("State", "Name"))),
+
+            // ── MenuMasters ───────────────────────────────────────────────────
+            ["MenuMasters"] = new AuditTableConfig(
+                new("Name",      "Menu Name"),
+                new("HasChild",  "Has Child"),
+                new("Position",  "Position"),
+                new("IconClass", "Icon Class")),
+
+            // ── PageMasters ───────────────────────────────────────────────────
+            ["PageMasters"] = new AuditTableConfig(
+                new("Name",    "Page Name"),
+                new("PageUrl", "Page URL"),
+                new("MenuId",  "Menu", new AuditLookup("MenuMaster", "Name"))),
+
+            // ── PageMasterModules ─────────────────────────────────────────────
+            ["PageMasterModules"] = new AuditTableConfig(
+                new("Name",   "Module Name"),
+                new("PageId", "Page", new AuditLookup("PageMaster", "Name"))),
+
+            // ── PageMasterModuleActionMappings ────────────────────────────────
+            ["PageMasterModuleActionMappings"] = new AuditTableConfig(
+                new("PageId",       "Page",   new AuditLookup("PageMaster",       "Name")),
+                new("PageModuleId", "Module", new AuditLookup("PageMasterModule", "Name")),
+                new("ActionId",     "Action")),
+
+            // ── MenuAndPagePermissions ────────────────────────────────────────
+            ["MenuAndPagePermissions"] = new AuditTableConfig(
+                new("RoleId",    "Role",    new AuditLookup("Role", "Name")),
+                new("IsAllowed", "Allowed")),
         };
 }

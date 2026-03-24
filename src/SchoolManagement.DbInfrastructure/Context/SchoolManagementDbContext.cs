@@ -27,6 +27,11 @@ public sealed class SchoolManagementDbContext : DbContext
     public DbSet<Country> Countries => Set<Country>();
     public DbSet<State> States => Set<State>();
     public DbSet<City> Cities => Set<City>();
+    public DbSet<MenuMaster>                    MenuMasters                    => Set<MenuMaster>();
+    public DbSet<PageMaster>                    PageMasters                    => Set<PageMaster>();
+    public DbSet<PageMasterModule>              PageMasterModules               => Set<PageMasterModule>();
+    public DbSet<PageMasterModuleActionMapping> PageMasterModuleActionMappings  => Set<PageMasterModuleActionMapping>();
+    public DbSet<MenuAndPagePermission>         MenuAndPagePermissions          => Set<MenuAndPagePermission>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

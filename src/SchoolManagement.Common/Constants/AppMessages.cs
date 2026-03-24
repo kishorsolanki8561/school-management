@@ -61,6 +61,36 @@ public static class AppMessages
 
         public static string AlreadyExists(string name)
             => $"An organization named '{name}' already exists.";
-
     }
+
+    public static class MenuMaster
+    {
+        public static string NotFound(int id)
+            => $"Menu with id {id} was not found.";
+    }
+
+    public static class PageMaster
+    {
+        public static string NotFound(int id)
+            => $"Page with id {id} was not found.";
+
+        public static string ModuleNotFound(int id)
+            => $"Page module with id {id} was not found.";
+
+        public static string ActionNotFound(int id)
+            => $"Page module action with id {id} was not found.";
+
+        public static string SinglePageViolation(int menuId)
+            => $"Menu {menuId} does not support child menus; only one page entry is permitted.";
+
+        public const string ActionAlreadyExists
+            = "This action mapping already exists for the selected page and module.";
+    }
+
+    public static class MenuAndPagePermission
+    {
+        public static string NotFound(int id)
+            => $"Permission with id {id} was not found.";
+    }
+
 }

@@ -13,7 +13,10 @@ public static class ServicesExtensions
         services.AddScoped<ICountryService, CountryService>();
         services.AddScoped<IStateService, StateService>();
         services.AddScoped<ICityService, CityService>();
-        services.AddScoped<IOrganizationService, OrganizationService>();
+        services.AddScoped<IOrganizationService,            OrganizationService>();
+        services.AddScoped<IMenuMasterService,              MenuMasterService>();
+        services.AddScoped<IPageMasterService,              PageMasterService>();
+        services.AddScoped<IMenuAndPagePermissionService,   MenuAndPagePermissionService>();
         return services;
     }
 }

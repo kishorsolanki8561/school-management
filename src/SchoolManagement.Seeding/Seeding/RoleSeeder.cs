@@ -44,6 +44,60 @@ public sealed class RoleSeeder : ISeeder
         {
             await _context.Roles.AddRangeAsync(toInsert, cancellationToken);
             await _context.SaveChangesAsync(cancellationToken);
+
+            // Auto-seed MenuAndPagePermissions (IsAllowed=false) for every
+            // existing page-module-action mapping so the new role is ready to configure.
+            await SeedPermissionsForNewRolesAsync(
+                toInsert.Select(r => r.Id).ToList(), cancellationToken);
+        }
+    }
+
+    private async Task SeedPermissionsForNewRolesAsync(
+        IList<int> newRoleIds, CancellationToken cancellationToken)
+    {
+        // Load all active actio    n mappings together with their page's MenuId
+        var mappings = await (
+            from m in _context.PageMasterModuleActionMappings
+            join p in _context.PageMasters on m.PageId equals p.Id
+            select new { m.PageId, m.PageModuleId, m.ActionId, p.MenuId }
+        ).ToListAsync(cancellationToken);
+
+        if (mappings.Count == 0) return;   // no pages configured yet — nothing to seed
+
+        // Idempotency: load any permissions that already exist for these roles
+        var existingKeys = (await _context.MenuAndPagePermissions
+            .Where(p => newRoleIds.Contains(p.RoleId))
+            .Select(p => new { p.RoleId, p.PageId, p.PageModuleId, p.ActionId })
+            .ToListAsync(cancellationToken))
+            .Select(x => (x.RoleId, x.PageId, x.PageModuleId, x.ActionId))
+            .ToHashSet();
+
+        var newPerms = new List<MenuAndPagePermission>();
+
+        foreach (var roleId in newRoleIds)
+        {
+            foreach (var m in mappings)
+            {
+                // HashSet.Add returns false when the key is already present
+                if (existingKeys.Add((roleId, m.PageId, m.PageModuleId, m.ActionId)))
+                {
+                    newPerms.Add(new MenuAndPagePermission
+                    {
+                        MenuId       = m.MenuId,
+                        PageId       = m.PageId,
+                        PageModuleId = m.PageModuleId,
+                        ActionId     = m.ActionId,
+                        RoleId       = roleId,
+                        IsAllowed    = false,
+                    });
+                }
+            }
+        }
+
+        if (newPerms.Count > 0)
+        {
+            await _context.MenuAndPagePermissions.AddRangeAsync(newPerms, cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken);
         }
     }
 
