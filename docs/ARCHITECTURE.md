@@ -38,10 +38,15 @@ Dependency direction: API → Services → DbInfrastructure → Models
 
 ### SchoolManagement.DbInfrastructure
 - **Context/SchoolManagementDbContext** — EF Core context; auto-stamps audit fields in `SaveChangesAsync`
-- **Repositories/** — generic `IWriteRepository<T>` (EF Core) and `IReadRepository` (Dapper)
+- **Repositories/** — generic `IWriteRepository<T>` (EF Core), `IReadRepository` (Dapper), `IDapperAuditExecutor` (Dapper writes with audit)
 - **Configurations/** — EF Core `IEntityTypeConfiguration<T>` per entity
-- **Interceptors/AuditInterceptor** — captures CreatedBy, ModifiedBy, IpAddress, Location, ScreenName, TableName, BatchId (groups all rows from the same `SaveChanges` call), ParentAuditLogId (links child to parent audit row via EF FK metadata)
-- **Extensions/DbInfrastructureExtensions.cs** — registers DbContext + repositories
+- **Audit/** — static audit sub-system:
+  - `AuditConfiguration` — registry of audited tables + columns; if a table is absent, it is silently skipped
+  - `AuditTableConfig` / `AuditColumnConfig` / `AuditLookup` — per-table and per-column config (display name, FK lookup, bool display override)
+  - `AuditValueHelper` — shared helpers used by both the EF interceptor and the Dapper executor: `GetEffectiveColumns`, `FormatValue` (bool → "Yes"/"No"), `ShouldSkip` (null / IsDeleted=false), `ResolveLookupAsync` (FK id → display value), `BuildFromEntityAsync`
+  - `DapperAuditContext` — carries table name, entity id, action, and old/new entity snapshots for Dapper writes
+- **Interceptors/AuditInterceptor** — EF Core `SaveChangesInterceptor`; column-wise old/new capture using `AuditConfiguration`; FK values resolved to display names; booleans formatted as "Yes"/"No"; null and IsDeleted=false values skipped; `ParentAuditLogId` stores the parent entity's Id (e.g. `user.Id`) so child rows (UserRoleMappings) link back to their parent audit row in a single save
+- **Extensions/DbInfrastructureExtensions.cs** — registers DbContext, repositories, and `IDapperAuditExecutor`
 
 ### SchoolManagement.Models
 - **Entities/** — EF Core entity classes; all business entities extend `BaseEntity`

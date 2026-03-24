@@ -41,6 +41,7 @@ dotnet test --collect:"XPlat Code Coverage"
 | OrganizationService | `Services/OrganizationServiceTests.cs` | Create, Update, Delete, GetById, GetAll, duplicate name validation |
 | AuthService | `Services/AuthServiceTests.cs` | Login, register, refresh token, logout, forgot/reset password, multi-role + org assignment |
 | AuditLogService | `Services/AuditLogServiceTests.cs` | GetByEntity, GetByUser, GetByScreen, GetByTable |
+| DapperAuditExecutor | `Services/DapperAuditExecutorTests.cs` | Skip on null context / zero rows / unconfigured table; Created saves NewData; Updated saves only changed columns; no-op when nothing changed; bool → Yes/No; null columns excluded; request context stamped |
 | EncryptionService | `Common/EncryptionServiceTests.cs` | AES-256-GCM encrypt/decrypt, RSA key operations |
 | FilesValidator | `Common/FilesValidatorTests.cs` | File type, size, and extension validation |
 | HashingUtility | `Common/HashingUtilityTests.cs` | Password hashing and verification |
