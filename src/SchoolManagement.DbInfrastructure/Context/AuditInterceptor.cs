@@ -41,8 +41,7 @@ public sealed class AuditInterceptor : SaveChangesInterceptor
     {
         if (_pending.Count == 0 || eventData.Context is null) return result;
 
-        var options = new JsonSerializerOptions { WriteIndented = false };
-        var logs    = new List<AuditLog>(_pending.Count);
+        var logs = new List<AuditLog>(_pending.Count);
 
         foreach (var p in _pending)
         {
@@ -62,8 +61,8 @@ public sealed class AuditInterceptor : SaveChangesInterceptor
                 EntityName       = p.Entity.GetType().Name,
                 EntityId         = p.Entity.Id.ToString(),
                 Action           = p.Action,
-                OldData          = oldData is { Count: > 0 } ? JsonSerializer.Serialize(oldData, options) : null,
-                NewData          = newData is { Count: > 0 } ? JsonSerializer.Serialize(newData, options) : null,
+                OldData          = AuditValueHelper.Serialize(oldData),
+                NewData          = AuditValueHelper.Serialize(newData),
                 TableName        = p.TableName,
                 BatchId          = p.BatchId,
                 ScreenName       = _requestContext.ScreenName,
@@ -124,7 +123,7 @@ public sealed class AuditInterceptor : SaveChangesInterceptor
                 case EntityState.Modified:
                     action = "Updated";
                     // Capture only effective columns (table-specific + defaults) that actually changed
-                    foreach (var col in GetEffectiveColumns(tableConfig))
+                    foreach (var col in AuditValueHelper.GetEffectiveColumns(tableConfig))
                     {
                         var prop = entry.Properties.FirstOrDefault(p => p.Metadata.Name == col.PropertyName);
                         if (prop is null || !prop.IsModified) continue;
@@ -150,7 +149,7 @@ public sealed class AuditInterceptor : SaveChangesInterceptor
 
                 case EntityState.Deleted:
                     action = "Deleted";
-                    foreach (var col in GetEffectiveColumns(tableConfig))
+                    foreach (var col in AuditValueHelper.GetEffectiveColumns(tableConfig))
                     {
                         var prop = entry.Properties.FirstOrDefault(p => p.Metadata.Name == col.PropertyName);
                         if (prop is null) continue;
@@ -193,7 +192,7 @@ public sealed class AuditInterceptor : SaveChangesInterceptor
     /// </summary>
     private static IReadOnlyList<PendingColumnValue> ReadFromEntity(BaseEntity entity, AuditTableConfig config)
     {
-        var effectiveCols = GetEffectiveColumns(config);
+        var effectiveCols = AuditValueHelper.GetEffectiveColumns(config);
         var result        = new List<PendingColumnValue>(effectiveCols.Count);
         var type          = entity.GetType();
 
@@ -205,21 +204,6 @@ public sealed class AuditInterceptor : SaveChangesInterceptor
         }
 
         return result;
-    }
-
-    /// <summary>
-    /// Returns the table's explicit columns followed by any <see cref="AuditConfiguration.DefaultColumns"/>
-    /// whose <c>PropertyName</c> is not already covered by the explicit list.
-    /// </summary>
-    private static IReadOnlyList<AuditColumnConfig> GetEffectiveColumns(AuditTableConfig config)
-    {
-        var explicitNames = config.Columns
-            .Select(c => c.PropertyName)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        return config.Columns
-            .Concat(AuditConfiguration.DefaultColumns.Where(d => !explicitNames.Contains(d.PropertyName)))
-            .ToList();
     }
 
     /// <summary>
@@ -243,66 +227,19 @@ public sealed class AuditInterceptor : SaveChangesInterceptor
                 && int.TryParse(cv.RawValue, out var id)
                 && id != 0)
             {
-                display = await ResolveLookupAsync(context, cv.Column.Lookup, id, cancellationToken);
+                display = await AuditValueHelper.ResolveLookupAsync(context, cv.Column.Lookup, id, cancellationToken);
             }
             else
             {
-                display = FormatValue(cv.Column, cv.RawValue);
+                display = AuditValueHelper.FormatValue(cv.Column, cv.RawValue);
             }
 
-            // Skip null values — nothing meaningful to record
-            if (display is null) continue;
-
-            // Skip IsDeleted = false — "not deleted" is the default state, no value in recording it
-            if (cv.Column.PropertyName.Equals("IsDeleted", StringComparison.OrdinalIgnoreCase)
-                && cv.RawValue?.Equals("False", StringComparison.OrdinalIgnoreCase) == true) continue;
+            if (AuditValueHelper.ShouldSkip(cv.Column, cv.RawValue, display)) continue;
 
             result[cv.Column.DisplayName] = display;
         }
 
         return result;
-    }
-
-    /// <summary>
-    /// Converts a raw CLR value string to its display form.
-    /// Booleans are rendered using the column's BoolTrueDisplay / BoolFalseDisplay
-    /// (default "Yes" / "No") — overridable per column in AuditConfiguration.
-    /// </summary>
-    private static string? FormatValue(AuditColumnConfig col, string? rawValue)
-    {
-        if (rawValue is null) return null;
-        if (rawValue.Equals("True",  StringComparison.OrdinalIgnoreCase)) return col.BoolTrueDisplay;
-        if (rawValue.Equals("False", StringComparison.OrdinalIgnoreCase)) return col.BoolFalseDisplay;
-        return rawValue;
-    }
-
-    /// <summary>
-    /// Resolves a FK integer to the display value of the referenced entity.
-    /// Checks the EF identity map first (cheap) then falls back to a DB query.
-    /// Returns the raw ID string if the entity or property cannot be found.
-    /// </summary>
-    private static async Task<string?> ResolveLookupAsync(
-        DbContext context,
-        AuditLookup lookup,
-        int id,
-        CancellationToken cancellationToken)
-    {
-        var entityType = context.Model
-            .GetEntityTypes()
-            .FirstOrDefault(e => e.ClrType.Name == lookup.EntityTypeName);
-
-        if (entityType is null) return id.ToString();
-
-        // FindAsync checks identity map first — no extra DB round-trip if entity is tracked
-        var entity = await context.FindAsync(
-            entityType.ClrType,
-            new object?[] { id },
-            cancellationToken);
-
-        if (entity is null) return id.ToString();
-
-        var valueProp = entityType.ClrType.GetProperty(lookup.ValueProperty);
-        return valueProp?.GetValue(entity)?.ToString() ?? id.ToString();
     }
 
     /// <summary>

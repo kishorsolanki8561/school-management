@@ -6,6 +6,7 @@ using SchoolManagement.Common.Constants;
 using SchoolManagement.Common.Helpers;
 using SchoolManagement.Common.Services;
 using SchoolManagement.DbInfrastructure.Context;
+using SchoolManagement.DbInfrastructure.Repositories;
 using SchoolManagement.DbInfrastructure.Repositories.Implementations;
 using SchoolManagement.DbInfrastructure.Repositories.Interfaces;
 
@@ -43,6 +44,9 @@ public static class DbInfrastructureExtensions
 
         // Dapper helper (self-manages connections via AppConfigFactory)
         services.AddScoped<IDapperHelper, DapperHelper>();
+
+        // Dapper write helper with built-in audit support
+        services.AddScoped<IDapperAuditExecutor, DapperAuditExecutor>();
 
         // ErrorLogService (needs DbContext)
         services.AddScoped<IErrorLogService, ErrorLogService>();
