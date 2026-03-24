@@ -146,6 +146,54 @@ public sealed class AuthServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task RegisterAsync_WithInvalidRoleIds_ThrowsInvalidOperation()
+    {
+        // Only role 1 exists — role 99 does not
+        await _context.Roles.AddAsync(
+            new SchoolManagement.Models.Entities.Role { Id = 1, Name = "Owner Admin" });
+        await _context.SaveChangesAsync();
+
+        var act = () => _sut.RegisterAsync(new RegisterRequest
+        {
+            Username = "testuser",
+            Email    = "test@test.com",
+            Password = "Pass1!",
+            RoleIds  = new List<int> { 1, 99 },
+        });
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*99*");
+
+        // User must NOT be committed (transaction rolled back by validation guard)
+        var saved = await _context.Users.FirstOrDefaultAsync(u => u.Username == "testuser");
+        saved.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task RegisterAsync_WithInvalidOrgIds_ThrowsInvalidOperation()
+    {
+        // Only org 1 exists — org 99 does not
+        await _context.Organizations.AddAsync(
+            new SchoolManagement.Models.Entities.Organization { Id = 1, Name = "Org A" });
+        await _context.SaveChangesAsync();
+
+        var act = () => _sut.RegisterAsync(new RegisterRequest
+        {
+            Username = "testuser2",
+            Email    = "test2@test.com",
+            Password = "Pass1!",
+            OrgIds   = new List<int> { 1, 99 },
+        });
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*99*");
+
+        // User must NOT be committed (transaction rolled back by validation guard)
+        var saved = await _context.Users.FirstOrDefaultAsync(u => u.Username == "testuser2");
+        saved.Should().BeNull();
+    }
+
+    [Fact]
     public async Task RegisterAsync_DuplicateUsername_ThrowsInvalidOperation()
     {
         await SeedUserAsync("eve", "eve@test.com", "Pass1!");

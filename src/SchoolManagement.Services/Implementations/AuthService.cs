@@ -44,12 +44,49 @@ public sealed class AuthService : IAuthService
 
     public async Task<LoginResponse> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default)
     {
+        // 1. Duplicate username / email check
         var exists = await _context.Users
             .AnyAsync(u => u.Username == request.Username || u.Email == request.Email, cancellationToken);
 
         if (exists)
             throw new InvalidOperationException(AppMessages.Auth.UsernameTaken);
 
+        // 2. Validate RoleIds — all supplied IDs must exist in the Roles table
+        var distinctRoleIds = request.RoleIds is { Count: > 0 }
+            ? request.RoleIds.Distinct().ToList()
+            : new List<int>();
+
+        if (distinctRoleIds.Count > 0)
+        {
+            var existingRoleIds = await _context.Roles
+                .Where(r => distinctRoleIds.Contains(r.Id))
+                .Select(r => r.Id)
+                .ToListAsync(cancellationToken);
+
+            var invalidRoleIds = distinctRoleIds.Except(existingRoleIds).ToList();
+            if (invalidRoleIds.Count > 0)
+                throw new InvalidOperationException(AppMessages.Role.InvalidIds(invalidRoleIds));
+        }
+
+        // 3. Validate OrgIds — all supplied IDs must exist in the Organizations table
+        var distinctOrgIds = request.OrgIds is { Count: > 0 }
+            ? request.OrgIds.Distinct().ToList()
+            : new List<int>();
+
+        if (distinctOrgIds.Count > 0)
+        {
+            var existingOrgIds = await _context.Organizations
+                .Where(o => distinctOrgIds.Contains(o.Id))
+                .Select(o => o.Id)
+                .ToListAsync(cancellationToken);
+
+            var invalidOrgIds = distinctOrgIds.Except(existingOrgIds).ToList();
+            if (invalidOrgIds.Count > 0)
+                throw new InvalidOperationException(AppMessages.Organization.InvalidIds(invalidOrgIds));
+        }
+
+        // 4. Build user + all mappings — use User navigation property so EF Core resolves
+        //    the FK after the INSERT and the AuditInterceptor can link ParentAuditLogId
         var user = new User
         {
             Username     = request.Username,
@@ -57,28 +94,25 @@ public sealed class AuthService : IAuthService
             PasswordHash = HashingUtility.HashPassword(request.Password),
         };
 
+        var roleMappings = distinctRoleIds
+            .Select(roleId => new UserRoleMapping { User = user, RoleId = roleId })
+            .ToList();
+
+        var orgMappings = distinctOrgIds
+            .Select(orgId => new UserOrganizationMapping { User = user, OrgId = orgId })
+            .ToList();
+
+        // 5. Single SaveChangesAsync — EF wraps all three inserts in one DB transaction.
+        //    If any insert fails the whole operation rolls back (no orphaned User rows).
+        //    The AuditInterceptor sees User + all mappings in the same batch, so it can
+        //    set ParentAuditLogId on the mapping audit rows correctly.
         await _context.Users.AddAsync(user, cancellationToken);
-        await _context.SaveChangesAsync(cancellationToken);
-
-        // Assign roles via UserRoleMapping (multiple roles supported)
-        if (request.RoleIds is { Count: > 0 })
-        {
-            var roleMappings = request.RoleIds
-                .Distinct()
-                .Select(roleId => new UserRoleMapping { UserId = user.Id, RoleId = roleId });
+        if (roleMappings.Count > 0)
             await _context.UserRoleMappings.AddRangeAsync(roleMappings, cancellationToken);
-            await _context.SaveChangesAsync(cancellationToken);
-        }
-
-        // Assign organisations via UserOrganizationMapping (multiple orgs supported)
-        if (request.OrgIds is { Count: > 0 })
-        {
-            var orgMappings = request.OrgIds
-                .Distinct()
-                .Select(orgId => new UserOrganizationMapping { UserId = user.Id, OrgId = orgId });
+        if (orgMappings.Count > 0)
             await _context.UserOrganizationMappings.AddRangeAsync(orgMappings, cancellationToken);
-            await _context.SaveChangesAsync(cancellationToken);
-        }
+
+        await _context.SaveChangesAsync(cancellationToken);
 
         return await GenerateTokensAsync(user, cancellationToken);
     }
