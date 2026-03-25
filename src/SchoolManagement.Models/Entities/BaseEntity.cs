@@ -8,6 +8,7 @@ public abstract class BaseEntity
     public DateTime? ModifiedAt { get; set; }
     public string? ModifiedBy { get; set; }
     public bool IsDeleted { get; set; }
+    public string? DeletedBy { get; set; }
     public string? IpAddress { get; set; }
     public string? Location { get; set; }
 }

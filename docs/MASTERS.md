@@ -1,4 +1,4 @@
-# Master Data — Country, State, City, Organization
+# Master Data — Country, State, City, Organization, Menu, Page, Permissions
 
 Master data provides reference tables used throughout the system. Geographic data forms a strict hierarchy: **Country → State → City**. Organizations are independently managed tenants.
 
@@ -384,6 +384,92 @@ Each seeder checks `IsSeededAsync()` first — if data already exists, it skips.
 | 27 | Security Guard | Support / Operations | `true` |
 | 28 | Cleaner | Support / Operations | `true` |
 | 29 | Maintenance Staff | Support / Operations | `true` |
+
+---
+
+---
+
+## Menu & Page Hierarchy
+
+```
+MenuMaster (1) ────────── (N) PageMaster (1) ────── (N) PageMasterModule (1) ── (N) PageMasterModuleActionMapping
+                                   │                           │
+                                   └── IsUsePageForOwnerAdmin  └── PageMasterModuleActionMapping.ActionId (ActionType enum)
+     │
+     └── IsUseMenuForOwnerAdmin
+
+MenuAndPagePermissions: MenuId + PageId + PageModuleId + ActionId + RoleId + IsAllowed
+```
+
+### MenuMaster
+**File:** `src/SchoolManagement.Models/Entities/MenuMaster.cs`
+
+| Property | Type | Notes |
+|---|---|---|
+| `Id` | int | PK, auto-increment |
+| `Name` | string | Required |
+| `HasChild` | bool | True = this menu has sub-menus |
+| `ParentMenuId` | int? | FK → MenuMaster.Id (self-referencing) |
+| `Position` | int | Display order |
+| `IconClass` | string? | CSS icon class |
+| `IsActive` | bool | Default `true` |
+| `IsUseMenuForOwnerAdmin` | bool | Default `false` — reserved for OwnerAdmin-specific logic |
+| *(BaseEntity fields)* | | |
+
+### PageMaster
+**File:** `src/SchoolManagement.Models/Entities/PageMaster.cs`
+
+| Property | Type | Notes |
+|---|---|---|
+| `Id` | int | PK |
+| `Name` | string | Required |
+| `IconClass` | string? | |
+| `PageUrl` | string | Route path |
+| `MenuId` | int | FK → MenuMaster.Id |
+| `IsActive` | bool | Default `true` |
+| `IsUsePageForOwnerAdmin` | bool | Default `false` |
+| *(BaseEntity fields)* | | |
+
+> **HasChild rule**: If `MenuMaster.HasChild = false`, only one `PageMaster` is allowed per menu. `PageMasterService.CreatePageAsync` enforces this.
+
+### PageMasterModule
+**File:** `src/SchoolManagement.Models/Entities/PageMasterModule.cs`
+
+| Property | Type | Notes |
+|---|---|---|
+| `Id` | int | PK |
+| `Name` | string | Module name (e.g. "Student List") |
+| `PageId` | int | FK → PageMaster.Id |
+| `IsActive` | bool | Default `true` |
+
+### PageMasterModuleActionMapping
+**File:** `src/SchoolManagement.Models/Entities/PageMasterModuleActionMapping.cs`
+
+Maps each module to a set of allowed `ActionType` enum values.
+
+| Property | Type | Notes |
+|---|---|---|
+| `Id` | int | PK |
+| `PageId` | int | FK → PageMaster.Id |
+| `PageModuleId` | int | FK → PageMasterModule.Id |
+| `ActionId` | ActionType | `ADD=1, EDIT=2, DELETE=3, VIEW_LIST=4, VIEW_DETAILS=5, UPDATE_PROGRESS=6, STATUS_CHANGE=7` |
+
+### MenuAndPagePermission
+**File:** `src/SchoolManagement.Models/Entities/MenuAndPagePermission.cs`
+
+Role-based permission record: `(MenuId, PageId, PageModuleId, ActionId, RoleId) → IsAllowed`.
+
+| Property | Type | Notes |
+|---|---|---|
+| `Id` | int | PK |
+| `MenuId` | int | FK → MenuMaster.Id |
+| `PageId` | int | FK → PageMaster.Id |
+| `PageModuleId` | int | FK → PageMasterModule.Id |
+| `ActionId` | ActionType | |
+| `RoleId` | int | FK → Role.Id |
+| `IsAllowed` | bool | Default `false` — deny-by-default |
+
+Permissions are **auto-seeded** when a page with modules is created (`PageMasterService.CreatePageAsync`) — one row per `(module, action, role)` combination, `IsAllowed = false`. They are also seeded for newly added roles in `RoleSeeder.SeedPermissionsForNewRolesAsync`.
 
 ---
 

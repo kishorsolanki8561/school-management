@@ -7,7 +7,8 @@
 | XUnit | Latest | Test runner |
 | Moq | Latest | Mocking dependencies |
 | FluentAssertions | Latest | Readable assertions |
-| Microsoft.EntityFrameworkCore.InMemory | Latest | In-memory DB for EF Core isolation |
+| Microsoft.EntityFrameworkCore.InMemory | Latest | In-memory DB for EF Core (non-transaction tests) |
+| Microsoft.EntityFrameworkCore.Sqlite | 6.0.0 | SQLite in-memory DB for transaction-aware tests |
 
 **Test project:** `tests/SchoolManagement.Tests/SchoolManagement.Tests.csproj`
 
@@ -42,6 +43,9 @@ dotnet test --collect:"XPlat Code Coverage"
 | AuthService | `Services/AuthServiceTests.cs` | Login, register, refresh token, logout, forgot/reset password, multi-role + org assignment |
 | AuditLogService | `Services/AuditLogServiceTests.cs` | GetByEntity, GetByUser, GetByScreen, GetByTable |
 | DapperAuditExecutor | `Services/DapperAuditExecutorTests.cs` | Skip on null context / zero rows / unconfigured table; Created saves NewData; Updated saves only changed columns; no-op when nothing changed; bool → Yes/No; null columns excluded; request context stamped |
+| MenuMasterService | `Services/MenuMasterServiceTests.cs` | Create, Update, Delete, GetById, GetAll, cascade soft-delete (pages/modules/actions/permissions) |
+| PageMasterService | `Services/PageMasterServiceTests.cs` | Hierarchical create (modules+actions+permissions), default all-action-types, multi-module, HasChild rules, duplicate skip, scalar update, new module upsert, cascade delete, GetAll paged |
+| MenuAndPagePermission | `Services/MenuAndPagePermissionServiceTests.cs` | GetById, GetAll with filters, UpdateAsync flip IsAllowed, NotFound |
 | EncryptionService | `Common/EncryptionServiceTests.cs` | AES-256-GCM encrypt/decrypt, RSA key operations |
 | FilesValidator | `Common/FilesValidatorTests.cs` | File type, size, and extension validation |
 | HashingUtility | `Common/HashingUtilityTests.cs` | Password hashing and verification |
@@ -96,6 +100,46 @@ public class CountryServiceTests : IDisposable
     }
 
     public void Dispose() => _context.Dispose();
+}
+```
+
+### 3. SQLite In-Memory for Transaction Tests
+
+The EF Core `InMemory` provider does **not** support `IDbContextTransaction`. Services that use `BeginTransactionAsync` (e.g. `PageMasterService`, `MenuMasterService`) must use the `SqliteServiceTestBase`:
+
+**File:** `tests/SchoolManagement.Tests/Infrastructure/SqliteServiceTestBase.cs`
+
+```csharp
+public abstract class SqliteServiceTestBase : IDisposable
+{
+    private readonly SqliteConnection _connection;
+    protected readonly SchoolManagementDbContext _context;
+
+    protected SqliteServiceTestBase()
+    {
+        _connection = new SqliteConnection("DataSource=:memory:");
+        _connection.Open();   // keep open — SQLite in-memory DB lives as long as the connection
+
+        var options = new DbContextOptionsBuilder<SchoolManagementDbContext>()
+            .UseSqlite(_connection).Options;
+
+        _context = new SchoolManagementDbContext(options);
+        _context.Database.EnsureCreated();
+    }
+
+    public void Dispose() { _context.Dispose(); _connection.Close(); _connection.Dispose(); }
+}
+```
+
+Test classes extend `SqliteServiceTestBase` instead of `IDisposable`:
+
+```csharp
+public sealed class PageMasterServiceTests : SqliteServiceTestBase
+{
+    public PageMasterServiceTests()
+    {
+        _sut = new PageMasterService(_context, _readRepoMock.Object, _mapper);
+    }
 }
 ```
 
@@ -187,6 +231,38 @@ await _context.SaveChangesAsync();
 - Create city — throws when state not found
 - CRUD operations (same pattern as Country)
 - GetByState — returns only cities for given state
+
+### MenuMasterService
+- Create — persists and returns response
+- Create — same name under different parents is allowed (no global unique constraint)
+- Update — updates fields correctly
+- Update — throws when ID not found
+- Delete — sets `IsDeleted = true` on menu
+- Delete — cascade soft-deletes all child `PageMasters`, `PageMasterModules`, `PageMasterModuleActionMappings`, `MenuAndPagePermissions`
+- Delete — throws when ID not found
+- GetById — delegates to read repository
+
+### PageMasterService
+- Create — explicit actions persisted for each module
+- Create — null/empty actions defaults to all 7 `ActionType` values
+- Create — multiple modules all persisted
+- Create — `HasChild = false` with no existing page: allowed
+- Create — `HasChild = false` with existing page: throws `InvalidOperationException`
+- Create — menu not found: throws `KeyNotFoundException`
+- Create — duplicate action for same module: skipped (idempotent)
+- Update — scalar field changes applied
+- Update — new module name: inserted with actions + permissions
+- Update — duplicate module name: skipped (idempotent)
+- Update — ID not found: throws `KeyNotFoundException`
+- Delete — cascade soft-deletes modules, action mappings, and permissions
+- GetAll — returns paged result from read repository
+
+### MenuAndPagePermissionService
+- GetById — delegates to read repository
+- GetAll — returns paged result
+- GetAll — passes filter params (roleId, menuId, pageId) to repository
+- Update — flips `IsAllowed` value
+- Update — throws `KeyNotFoundException` when record not found
 
 ### AuditLogService
 - GetByEntity — returns paged result for entity name + id

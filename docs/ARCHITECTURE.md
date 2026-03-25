@@ -31,9 +31,9 @@ Dependency direction: API → Services → DbInfrastructure → Models
 - **Program.cs** — DI composition root; wires all modules via extension methods
 
 ### SchoolManagement.Services
-- **Interfaces/** — service contracts (`IAuthService`, `ICountryService`, `IStateService`, `ICityService`, `IAuditLogService`, `IOrganizationService`)
+- **Interfaces/** — service contracts (`IAuthService`, `ICountryService`, `IStateService`, `ICityService`, `IAuditLogService`, `IOrganizationService`, `IMenuMasterService`, `IPageMasterService`, `IMenuAndPagePermissionService`)
 - **Implementations/** — business logic classes
-- **Constants/** — raw Dapper SQL queries per domain (`CountryQueries`, `StateQueries`, `CityQueries`, `AuditLogQueries`, `AuthQueries`, `OrganizationQueries`)
+- **Constants/** — raw Dapper SQL queries per domain (`CountryQueries`, `StateQueries`, `CityQueries`, `AuditLogQueries`, `AuthQueries`, `OrganizationQueries`, `MenuMasterQueries`, `PageMasterQueries`, `MenuAndPagePermissionQueries`)
 - **Extensions/ServicesExtensions.cs** — registers all services as `Scoped`
 
 ### SchoolManagement.DbInfrastructure
@@ -45,7 +45,7 @@ Dependency direction: API → Services → DbInfrastructure → Models
   - `AuditTableConfig` / `AuditColumnConfig` / `AuditLookup` — per-table and per-column config (display name, FK lookup, bool display override)
   - `AuditValueHelper` — shared helpers used by both the EF interceptor and the Dapper executor: `GetEffectiveColumns`, `FormatValue` (bool → "Yes"/"No"), `ShouldSkip` (null / IsDeleted=false), `ResolveLookupAsync` (FK id → display value), `BuildFromEntityAsync`
   - `DapperAuditContext` — carries table name, entity id, action, and old/new entity snapshots for Dapper writes
-- **Interceptors/AuditInterceptor** — EF Core `SaveChangesInterceptor`; column-wise old/new capture using `AuditConfiguration`; FK values resolved to display names; booleans formatted as "Yes"/"No"; null and IsDeleted=false values skipped; `ParentAuditLogId` stores the parent entity's Id (e.g. `user.Id`) so child rows (UserRoleMappings) link back to their parent audit row in a single save
+- **Interceptors/AuditInterceptor** — EF Core `SaveChangesInterceptor`; column-wise old/new capture using `AuditConfiguration`; FK values resolved to display names; booleans formatted as "Yes"/"No"; null and IsDeleted=false values skipped. Parent-child audit linking works generically via EF FK metadata (`FindParentEntity`) — no entity types are hardcoded. `BatchId` is scoped to the active DB transaction (all `SaveChangesAsync` calls inside one transaction share the same batch). `ParentAuditLogId` correctly stores the **parent `AuditLog` row's Id** (not the entity PK) via a two-pass save: parent audit rows are saved first so their Ids are known, then child rows are saved with `ParentAuditLogId` set. A `_savedAuditIds` dictionary enables cross-`SaveChangesAsync` parent linking within the same request (e.g. page saved in one call, modules saved in a subsequent call inside the same transaction)
 - **Extensions/DbInfrastructureExtensions.cs** — registers DbContext, repositories, and `IDapperAuditExecutor`
 
 ### SchoolManagement.Models
@@ -202,6 +202,8 @@ dotnet ef migrations remove \
 | `AddOrganizationAndUserOrgMapping` | Removes `OrgId` from BaseEntity tables (including Roles at this stage); creates `Organizations` table; creates `UserOrganizationMappings` table |
 | `RemoveOrgIdFromRole` | Removes `OrgId` column from `Roles` table |
 | `AddIsOrgRoleToRole` | Adds `IsOrgRole` (bool, default false) column to `Roles` table |
+| *(Menu/Page migrations)* | Creates `MenuMasters`, `PageMasters`, `PageMasterModules`, `PageMasterModuleActionMappings`, `MenuAndPagePermissions` tables |
+| `AddIsUseForOwnerAdminToMenuAndPage` | Adds `IsUseMenuForOwnerAdmin` (bit, default 0) to `MenuMasters`; adds `IsUsePageForOwnerAdmin` (bit, default 0) to `PageMasters` |
 
 > The `Microsoft.EntityFrameworkCore.Design` package is in `SchoolManagement.API.csproj` (as a private dev dependency) to support `dotnet ef` CLI tooling.
 

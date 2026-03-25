@@ -53,8 +53,8 @@ public sealed class SchoolManagementDbContext : DbContext
 
     private void StampAuditFields()
     {
-        var userId = _requestContext?.UserId ?? "System";
-        var ip = _requestContext?.IpAddress;
+        var username = _requestContext?.Username ?? "System";
+        var ip       = _requestContext?.IpAddress;
         var location = _requestContext?.Location;
 
         foreach (var entry in ChangeTracker.Entries<BaseEntity>())
@@ -62,16 +62,22 @@ public sealed class SchoolManagementDbContext : DbContext
             switch (entry.State)
             {
                 case Microsoft.EntityFrameworkCore.EntityState.Added:
-                    entry.Property(nameof(BaseEntity.CreatedBy)).CurrentValue = userId;
+                    entry.Property(nameof(BaseEntity.CreatedBy)).CurrentValue = username;
                     entry.Property(nameof(BaseEntity.IpAddress)).CurrentValue = ip;
-                    entry.Property(nameof(BaseEntity.Location)).CurrentValue = location;
+                    entry.Property(nameof(BaseEntity.Location)).CurrentValue  = location;
                     break;
 
                 case Microsoft.EntityFrameworkCore.EntityState.Modified:
                     entry.Entity.ModifiedAt = DateTime.UtcNow;
-                    entry.Entity.ModifiedBy = userId;
-                    entry.Entity.IpAddress = ip;
-                    entry.Entity.Location = location;
+                    entry.Entity.ModifiedBy = username;
+                    entry.Entity.IpAddress  = ip;
+                    entry.Entity.Location   = location;
+
+                    if (entry.Property(nameof(BaseEntity.IsDeleted)).IsModified
+                        && entry.Entity.IsDeleted)
+                    {
+                        entry.Entity.DeletedBy = username;
+                    }
                     break;
             }
         }

@@ -13,6 +13,12 @@ public sealed class AuditInterceptor : SaveChangesInterceptor
     private readonly IRequestContext _requestContext;
     private readonly List<PendingAuditEntry> _pending = new();
 
+    // Maps (EntityType, EntityId) → AuditLog.Id for all entities audited in
+    // previous SaveChangesAsync calls within the same request/scope.
+    // Enables ParentAuditLogId resolution across multiple SaveChangesAsync calls
+    // (e.g. page saved first, modules saved next — all inside one transaction).
+    private readonly Dictionary<(Type, int), int> _savedAuditIds = new();
+
     public AuditInterceptor(IRequestContext requestContext)
     {
         _requestContext = requestContext;
@@ -41,7 +47,9 @@ public sealed class AuditInterceptor : SaveChangesInterceptor
     {
         if (_pending.Count == 0 || eventData.Context is null) return result;
 
-        var logs = new List<AuditLog>(_pending.Count);
+        // Build all log objects keyed by their PendingAuditEntry.
+        // ParentAuditLogId is left null here — resolved in two passes below.
+        var entryToLog = new Dictionary<PendingAuditEntry, AuditLog>(ReferenceEqualityComparer.Instance);
 
         foreach (var p in _pending)
         {
@@ -56,33 +64,81 @@ public sealed class AuditInterceptor : SaveChangesInterceptor
             var oldData = await ResolveDictionaryAsync(rawOld, eventData.Context, cancellationToken);
             var newData = await ResolveDictionaryAsync(rawNew, eventData.Context, cancellationToken);
 
-            var log = new AuditLog
+            entryToLog[p] = new AuditLog
             {
-                EntityName       = p.Entity.GetType().Name,
-                EntityId         = p.Entity.Id.ToString(),
-                Action           = p.Action,
-                OldData          = AuditValueHelper.Serialize(oldData),
-                NewData          = AuditValueHelper.Serialize(newData),
-                TableName        = p.TableName,
-                BatchId          = p.BatchId,
-                ScreenName       = _requestContext.ScreenName,
-                ModifiedBy       = _requestContext.UserId ?? "System",
-                CreatedBy        = _requestContext.Username,
-                IpAddress        = _requestContext.IpAddress,
-                Location         = _requestContext.Location,
-                // Parent entity Id (e.g. user.Id) — real value available after the
-                // main SaveChangesAsync has completed and EF has assigned all PKs.
-                ParentAuditLogId = p.ParentPendingEntry?.Entity.Id,
+                EntityName = p.Entity.GetType().Name,
+                EntityId   = p.Entity.Id.ToString(),
+                Action     = p.Action,
+                OldData    = AuditValueHelper.Serialize(oldData),
+                NewData    = AuditValueHelper.Serialize(newData),
+                TableName  = p.TableName,
+                BatchId    = p.BatchId,
+                ScreenName = _requestContext.ScreenName,
+                ModifiedBy = _requestContext.UserId ?? "System",
+                CreatedBy  = _requestContext.Username,
+                IpAddress  = _requestContext.IpAddress,
+                Location   = _requestContext.Location,
+                // ParentAuditLogId resolved below after parent logs are saved
             };
-
-            logs.Add(log);
         }
 
         _pending.Clear();
 
-        // AuditLog does not extend BaseEntity — this save will not trigger another audit cycle
-        await eventData.Context.Set<AuditLog>().AddRangeAsync(logs, cancellationToken);
-        await eventData.Context.SaveChangesAsync(cancellationToken);
+        // Split into root logs (no parent entity) and child logs (have a parent entity).
+        // "Parent entity" = the entity at the other end of a FK, e.g. PageMaster is
+        // the parent of PageMasterModule.  Determined generically via EF FK metadata
+        // in FindParentEntity — no hardcoding of entity types required.
+        var parentPairs = entryToLog.Where(kv => kv.Key.ParentEntity is null).ToList();
+        var childPairs  = entryToLog.Where(kv => kv.Key.ParentEntity is not null).ToList();
+
+        // ── Pass 1: save root (parent) audit logs ─────────────────────────────
+        // AuditLog does not extend BaseEntity — these saves will not re-trigger
+        // the interceptor's audit cycle.
+        if (parentPairs.Count > 0)
+        {
+            await eventData.Context.Set<AuditLog>()
+                .AddRangeAsync(parentPairs.Select(kv => kv.Value), cancellationToken);
+            await eventData.Context.SaveChangesAsync(cancellationToken);
+
+            // Record the new AuditLog.Id so child entries (even from a LATER
+            // SaveChangesAsync call in the same request) can resolve ParentAuditLogId.
+            foreach (var (pending, log) in parentPairs)
+                _savedAuditIds[(pending.Entity.GetType(), pending.Entity.Id)] = log.Id;
+        }
+
+        // ── Pass 2: resolve ParentAuditLogId, then save child audit logs ──────
+        if (childPairs.Count > 0)
+        {
+            foreach (var (pending, childLog) in childPairs)
+            {
+                // Strategy A — same-batch parent: both parent and child were in this
+                // SaveChangesAsync call; use the already-saved log's Id directly.
+                if (pending.ParentPendingEntry is not null
+                    && entryToLog.TryGetValue(pending.ParentPendingEntry, out var sameBatchLog))
+                {
+                    childLog.ParentAuditLogId = sameBatchLog.Id;
+                }
+                // Strategy B — cross-batch parent: parent was saved in a previous
+                // SaveChangesAsync within this request (e.g. page saved first, modules
+                // saved in the next call inside the same transaction).
+                else if (pending.ParentEntity is not null
+                    && _savedAuditIds.TryGetValue(
+                        (pending.ParentEntity.GetType(), pending.ParentEntity.Id), out var crossBatchId))
+                {
+                    childLog.ParentAuditLogId = crossBatchId;
+                }
+                // If neither strategy resolves the parent, ParentAuditLogId stays null
+                // (root-level log); the BatchId still groups the whole operation.
+            }
+
+            await eventData.Context.Set<AuditLog>()
+                .AddRangeAsync(childPairs.Select(kv => kv.Value), cancellationToken);
+            await eventData.Context.SaveChangesAsync(cancellationToken);
+
+            // Record child log Ids too — they may be parents in deeper hierarchies.
+            foreach (var (pending, log) in childPairs)
+                _savedAuditIds[(pending.Entity.GetType(), pending.Entity.Id)] = log.Id;
+        }
 
         return result;
     }
@@ -91,7 +147,11 @@ public sealed class AuditInterceptor : SaveChangesInterceptor
 
     private void CollectPendingEntries(DbContext context)
     {
-        var batchId = Guid.NewGuid().ToString();
+        // Use the active transaction's ID so every SaveChangesAsync call within
+        // the same transaction shares one BatchId — grouping the full parent-child
+        // audit trail into a single queryable batch.
+        var batchId = context.Database.CurrentTransaction?.TransactionId.ToString("N")
+                      ?? Guid.NewGuid().ToString("N");
 
         var changedEntries = context.ChangeTracker
             .Entries<BaseEntity>()
@@ -171,7 +231,10 @@ public sealed class AuditInterceptor : SaveChangesInterceptor
             entityToEntry[entry.Entity] = pending;
         }
 
-        // Pass 2: link each child entry to its parent entry (for ParentAuditLogId)
+        // Pass 2: link each child entry to its parent
+        // • ParentEntity  — always stored (used for cross-SaveChanges lookup via _savedAuditIds)
+        // • ParentPendingEntry — set only when the parent is also in THIS batch
+        //   (used for same-SaveChanges parent-child linking without an extra DB lookup)
         foreach (var entry in changedEntries)
         {
             var tableName = entry.Metadata.GetTableName() ?? entry.Entity.GetType().Name;
@@ -179,7 +242,11 @@ public sealed class AuditInterceptor : SaveChangesInterceptor
             if (!entityToEntry.TryGetValue(entry.Entity, out var pending)) continue;
 
             var parentEntity = FindParentEntity(entry, context);
-            if (parentEntity is not null && entityToEntry.TryGetValue(parentEntity, out var parentPending))
+            if (parentEntity is null) continue;
+
+            pending.ParentEntity = parentEntity;
+
+            if (entityToEntry.TryGetValue(parentEntity, out var parentPending))
                 pending.ParentPendingEntry = parentPending;
         }
     }
@@ -305,11 +372,16 @@ public sealed class AuditInterceptor : SaveChangesInterceptor
             TableConfig = tableConfig;
         }
 
-        public BaseEntity        Entity             { get; }
-        public string            Action             { get; }
-        public string            TableName          { get; }
-        public string            BatchId            { get; }
-        public AuditTableConfig  TableConfig        { get; }
+        public BaseEntity         Entity             { get; }
+        public string             Action             { get; }
+        public string             TableName          { get; }
+        public string             BatchId            { get; }
+        public AuditTableConfig   TableConfig        { get; }
+
+        /// <summary>The FK parent entity — set for any child entity regardless of batch.</summary>
+        public BaseEntity?        ParentEntity       { get; set; }
+
+        /// <summary>The parent's PendingAuditEntry — set only when parent is in the same SaveChanges batch.</summary>
         public PendingAuditEntry? ParentPendingEntry { get; set; }
 
         /// <summary>

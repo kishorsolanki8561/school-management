@@ -408,6 +408,119 @@ Get paginated list of organizations. Query params: `page`, `pageSize`, `search`.
 
 ---
 
+## Menu Master Module
+
+All endpoints require auth (`Bearer`).
+
+### POST `/menu-master`
+Create a menu.
+
+**Request**
+```json
+{
+  "name": "Dashboard",
+  "hasChild": false,
+  "parentMenuId": 0,
+  "position": 1,
+  "iconClass": "dashboard",
+  "isUseMenuForOwnerAdmin": false
+}
+```
+
+---
+
+### PUT `/menu-master/{id}`
+Update a menu.
+
+---
+
+### DELETE `/menu-master/{id}`
+Soft-delete a menu and cascade soft-delete all child `PageMasters`, `PageMasterModules`, `PageMasterModuleActionMappings`, `MenuAndPagePermissions`.
+
+---
+
+### GET `/menu-master/{id}`
+Get a menu by ID.
+
+---
+
+### GET `/menu-master`
+Get paginated list of menus. Query params: `page`, `pageSize`, `search`.
+
+---
+
+## Page Master Module
+
+All endpoints require auth (`Bearer`).
+
+### POST `/page-master`
+Create a page with hierarchical modules + actions. Each module entry auto-seeds `PageMasterModuleActionMappings` and `MenuAndPagePermissions` for all roles.
+
+**Request**
+```json
+{
+  "name": "Dashboard",
+  "iconClass": "Dashboard",
+  "pageUrl": "/Dashboard",
+  "menuId": 1,
+  "isUsePageForOwnerAdmin": false,
+  "modules": [
+    {
+      "name": "Overview",
+      "actions": [1, 2, 3, 4, 5, 6, 7]
+    }
+  ]
+}
+```
+
+> If `actions` is omitted or empty, all 7 `ActionType` values are seeded automatically (`ADD=1, EDIT=2, DELETE=3, VIEW_LIST=4, VIEW_DETAILS=5, UPDATE_PROGRESS=6, STATUS_CHANGE=7`).
+
+---
+
+### PUT `/page-master/{id}`
+Update a page. If `modules` is provided, new modules are upserted (existing ones skipped by name).
+
+---
+
+### DELETE `/page-master/{id}`
+Soft-delete a page and cascade soft-delete all child modules, action mappings, and permissions.
+
+---
+
+### GET `/page-master/{id}`
+Get a page by ID.
+
+---
+
+### GET `/page-master`
+Get paginated list of pages. Query params: `page`, `pageSize`, `menuId` (optional filter).
+
+---
+
+## Menu & Page Permission Module
+
+All endpoints require auth (`Bearer`).
+
+### GET `/menu-and-page-permission/{id}`
+Get a single permission record by ID.
+
+---
+
+### GET `/menu-and-page-permission`
+Get paginated list of permissions. Query params: `page`, `pageSize`, `roleId`, `menuId`, `pageId`.
+
+---
+
+### PUT `/menu-and-page-permission/{id}`
+Flip the `IsAllowed` flag on a permission record.
+
+**Request**
+```json
+{ "isAllowed": true }
+```
+
+---
+
 ## AuditLog Module
 
 All endpoints require auth (`Bearer`). Returns paginated `AuditLog` records.
@@ -506,6 +619,19 @@ Get all audit entries for a specific DB table (matched against `TableName` colum
 | GET | `/organization/{id}` | Yes | Get organization |
 | GET | `/organization` | Yes | List organizations |
 | GET | `/encryption/public-key` | No | Get RSA public key |
+| POST | `/menu-master` | Yes | Create menu |
+| PUT | `/menu-master/{id}` | Yes | Update menu |
+| DELETE | `/menu-master/{id}` | Yes | Delete menu (cascade) |
+| GET | `/menu-master/{id}` | Yes | Get menu |
+| GET | `/menu-master` | Yes | List menus |
+| POST | `/page-master` | Yes | Create page (hierarchical) |
+| PUT | `/page-master/{id}` | Yes | Update page |
+| DELETE | `/page-master/{id}` | Yes | Delete page (cascade) |
+| GET | `/page-master/{id}` | Yes | Get page |
+| GET | `/page-master` | Yes | List pages |
+| GET | `/menu-and-page-permission/{id}` | Yes | Get permission by ID |
+| GET | `/menu-and-page-permission` | Yes | List permissions (filterable) |
+| PUT | `/menu-and-page-permission/{id}` | Yes | Flip IsAllowed |
 | GET | `/audit-log/entity/{name}/{id}` | Yes | Audit history for a record |
 | GET | `/audit-log/user/{userId}` | Yes | Audit entries by user |
 | GET | `/audit-log/screen/{screenName}` | Yes | Audit entries by screen |

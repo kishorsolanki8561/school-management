@@ -104,6 +104,62 @@ All properties map by convention (same name, compatible type). No custom configu
 
 ---
 
+### MenuMaster → MenuResponse
+
+```csharp
+CreateMap<MenuMaster, MenuResponse>();
+```
+
+Direct convention mapping — no custom `ForMember` needed.
+
+---
+
+### PageMaster → PageResponse
+
+```csharp
+CreateMap<PageMaster, PageResponse>();
+```
+
+Direct convention mapping.
+
+---
+
+### MenuAndPagePermission → MenuAndPagePermissionResponse
+
+```csharp
+CreateMap<MenuAndPagePermission, MenuAndPagePermissionResponse>();
+```
+
+Direct convention mapping.
+
+---
+
+### CreatePageRequest → PageMaster (inbound)
+
+```csharp
+CreateMap<CreatePageRequest, PageMaster>()
+    .ForMember(dest => dest.Menu,        opt => opt.Ignore())
+    .ForMember(dest => dest.Modules,     opt => opt.Ignore())
+    .ForMember(dest => dest.Permissions, opt => opt.Ignore());
+```
+
+Navigation properties are excluded — they are populated by `PageMasterService` separately during hierarchical seeding.
+
+---
+
+### UpdatePageRequest → PageMaster (inbound)
+
+```csharp
+CreateMap<UpdatePageRequest, PageMaster>()
+    .ForMember(dest => dest.Menu,        opt => opt.Ignore())
+    .ForMember(dest => dest.Modules,     opt => opt.Ignore())
+    .ForMember(dest => dest.Permissions, opt => opt.Ignore());
+```
+
+Used with `_mapper.Map(request, existingPage)` to apply only scalar field changes in `UpdatePageAsync`.
+
+---
+
 ## Services That Use AutoMapper
 
 | Service | File | Usage |
@@ -112,8 +168,10 @@ All properties map by convention (same name, compatible type). No custom configu
 | `StateService` | `Services/Implementations/StateService.cs` | `_mapper.Map<StateResponse>(state)` |
 | `CityService` | `Services/Implementations/CityService.cs` | `_mapper.Map<CityResponse>(city)` |
 | `OrganizationService` | `Services/Implementations/OrganizationService.cs` | `_mapper.Map<OrganizationResponse>(org)` |
+| `MenuMasterService` | `Services/Implementations/MenuMasterService.cs` | `_mapper.Map<MenuResponse>(menu)` |
+| `PageMasterService` | `Services/Implementations/PageMasterService.cs` | `_mapper.Map<PageMaster>(request)` (create); `_mapper.Map(request, page)` (update); `_mapper.Map<PageResponse>(page)` (response) |
 
-All four services inject `IMapper` via constructor and call `_mapper.Map<TDestination>(source)`.
+All services inject `IMapper` via constructor.
 
 ---
 
