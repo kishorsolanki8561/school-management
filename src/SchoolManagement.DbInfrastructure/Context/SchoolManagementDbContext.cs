@@ -64,7 +64,7 @@ public sealed class SchoolManagementDbContext : DbContext
                 case Microsoft.EntityFrameworkCore.EntityState.Added:
                     entry.Property(nameof(BaseEntity.CreatedBy)).CurrentValue = username;
                     entry.Property(nameof(BaseEntity.IpAddress)).CurrentValue = ip;
-                    entry.Property(nameof(BaseEntity.Location)).CurrentValue  = location;
+                    entry.Property(nameof(BaseEntity.   Location)).CurrentValue  = location;
                     break;
 
                 case Microsoft.EntityFrameworkCore.EntityState.Modified:

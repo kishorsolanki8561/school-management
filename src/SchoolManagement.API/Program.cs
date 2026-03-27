@@ -68,12 +68,14 @@ app.UseHttpsRedirection();
 // 4. CORS
 app.UseCors();
 
-// 5. Request context (populates IRequestContext from JWT + IP)
-app.UseRequestContextMiddleware();
-
-// 6. Authentication & Authorization
+// 5. Authentication & Authorization — must run before RequestContextMiddleware
+//    so context.User is populated from the JWT before we read its claims
 app.UseAuthentication();
 app.UseAuthorization();
+
+// 6. Request context — runs after auth so context.User.Identity.IsAuthenticated = true
+//    and UserId / Username / Role are correctly extracted into IRequestContext
+app.UseRequestContextMiddleware();
 
 // 7. E2E Encryption middleware (decrypts requests, encrypts responses)
 // app.UseEncryption(); // Uncomment to enable E2E encryption for all non-bypass routes

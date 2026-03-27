@@ -74,7 +74,7 @@ public sealed class AuditInterceptor : SaveChangesInterceptor
                 TableName  = p.TableName,
                 BatchId    = p.BatchId,
                 ScreenName = _requestContext.ScreenName,
-                ModifiedBy = _requestContext.UserId ?? "System",
+                ModifiedBy = _requestContext.Username ?? "System",
                 CreatedBy  = _requestContext.Username,
                 IpAddress  = _requestContext.IpAddress,
                 Location   = _requestContext.Location,
