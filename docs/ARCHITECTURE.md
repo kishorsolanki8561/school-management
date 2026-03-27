@@ -137,18 +137,21 @@ Every business entity extends `BaseEntity`:
 ```csharp
 public abstract class BaseEntity
 {
-    public int Id            { get; set; }
-    public DateTime CreatedAt   { get; init; }
-    public string CreatedBy     { get; init; }
+    public int Id              { get; set; }
+    public DateTime CreatedAt  { get; init; }
+    public string CreatedBy    { get; init; }   // username from JWT
     public DateTime? ModifiedAt { get; set; }
-    public string? ModifiedBy   { get; set; }
-    public bool IsDeleted       { get; set; }   // soft delete
-    public string? IpAddress    { get; set; }
-    public string? Location     { get; set; }
+    public string? ModifiedBy  { get; set; }    // username from JWT
+    public bool IsDeleted      { get; set; }    // soft delete
+    public string? DeletedBy   { get; set; }    // username from JWT, stamped when IsDeleted→true
+    public string? IpAddress   { get; set; }
+    public string? Location    { get; set; }
 }
 ```
 
 Soft delete is applied via a global query filter: `IsDeleted == false` is appended automatically to all EF Core queries.
+
+`CreatedBy`, `ModifiedBy`, and `DeletedBy` are all stamped in `SchoolManagementDbContext.StampAuditFields()` using `_requestContext.Username` (extracted from the JWT `ClaimTypes.Name` claim). `DeletedBy` is only set when `IsDeleted` transitions to `true` on a `Modified` entry.
 
 `Role` additionally carries `IsOrgRole` (bool) — `true` for school-scoped roles, `false` for system-level roles (OwnerAdmin, SuperAdmin, Admin).
 

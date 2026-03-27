@@ -33,22 +33,40 @@ public sealed class MenuAndPagePermissionServiceTests : IDisposable
     // ── Update ────────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task UpdateAsync_ValidRequest_FlipsIsAllowed()
+    public async Task UpdateAsync_TogglesIsAllowed_FalseToTrue()
     {
         var perm = await SeedPermissionAsync(isAllowed: false);
 
-        var result = await _sut.UpdateAsync(perm.Id, new UpdatePermissionRequest { IsAllowed = true });
+        var result = await _sut.UpdateAsync(perm.Id, perm.RoleId);
 
         result.IsAllowed.Should().BeTrue();
+        (await _context.MenuAndPagePermissions.FindAsync(perm.Id))!.IsAllowed.Should().BeTrue();
+    }
 
-        var db = await _context.MenuAndPagePermissions.FindAsync(perm.Id);
-        db!.IsAllowed.Should().BeTrue();
+    [Fact]
+    public async Task UpdateAsync_TogglesIsAllowed_TrueToFalse()
+    {
+        var perm = await SeedPermissionAsync(isAllowed: true);
+
+        var result = await _sut.UpdateAsync(perm.Id, perm.RoleId);
+
+        result.IsAllowed.Should().BeFalse();
+        (await _context.MenuAndPagePermissions.FindAsync(perm.Id))!.IsAllowed.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WrongRoleId_ThrowsKeyNotFoundException()
+    {
+        var perm = await SeedPermissionAsync(isAllowed: false);
+
+        var act = () => _sut.UpdateAsync(perm.Id, roleId: 999);
+        await act.Should().ThrowAsync<KeyNotFoundException>();
     }
 
     [Fact]
     public async Task UpdateAsync_NotFound_ThrowsKeyNotFoundException()
     {
-        var act = () => _sut.UpdateAsync(999, new UpdatePermissionRequest { IsAllowed = true });
+        var act = () => _sut.UpdateAsync(999, roleId: 1);
         await act.Should().ThrowAsync<KeyNotFoundException>();
     }
 

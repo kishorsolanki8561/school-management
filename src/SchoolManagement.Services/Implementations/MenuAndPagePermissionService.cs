@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using SchoolManagement.Common.Constants;
 using SchoolManagement.DbInfrastructure.Context;
 using SchoolManagement.DbInfrastructure.Repositories.Interfaces;
@@ -19,12 +20,13 @@ public sealed class MenuAndPagePermissionService : IMenuAndPagePermissionService
         _readRepo = readRepo;
     }
 
-    public async Task<MenuAndPagePermissionResponse> UpdateAsync(int id, UpdatePermissionRequest request, CancellationToken ct = default)
+    public async Task<MenuAndPagePermissionResponse> UpdateAsync(int id, int roleId, CancellationToken ct = default)
     {
-        var permission = await _context.MenuAndPagePermissions.FindAsync(new object[] { id }, ct)
+        var permission = await _context.MenuAndPagePermissions
+            .FirstOrDefaultAsync(p => p.Id == id && p.RoleId == roleId, ct)
             ?? throw new KeyNotFoundException(AppMessages.MenuAndPagePermission.NotFound(id));
 
-        permission.IsAllowed = request.IsAllowed;
+        permission.IsAllowed = !permission.IsAllowed;
         await _context.SaveChangesAsync(ct);
 
         return new MenuAndPagePermissionResponse

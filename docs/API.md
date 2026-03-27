@@ -511,13 +511,10 @@ Get paginated list of permissions. Query params: `page`, `pageSize`, `roleId`, `
 
 ---
 
-### PUT `/menu-and-page-permission/{id}`
-Flip the `IsAllowed` flag on a permission record.
-
-**Request**
-```json
-{ "isAllowed": true }
-```
+### PUT `/menu-and-page-permission/{id}/{roleId}`
+Toggle the `IsAllowed` flag — **no request body needed**.
+Call once → allowed (`true`). Call again → denied (`false`).
+Returns `404` if `id` does not exist or `roleId` does not match the stored row.
 
 ---
 
@@ -631,7 +628,7 @@ Get all audit entries for a specific DB table (matched against `TableName` colum
 | GET | `/page-master` | Yes | List pages |
 | GET | `/menu-and-page-permission/{id}` | Yes | Get permission by ID |
 | GET | `/menu-and-page-permission` | Yes | List permissions (filterable) |
-| PUT | `/menu-and-page-permission/{id}` | Yes | Flip IsAllowed |
+| PUT | `/menu-and-page-permission/{id}/{roleId}` | Yes | Toggle IsAllowed (no body) |
 | GET | `/audit-log/entity/{name}/{id}` | Yes | Audit history for a record |
 | GET | `/audit-log/user/{userId}` | Yes | Audit entries by user |
 | GET | `/audit-log/screen/{screenName}` | Yes | Audit entries by screen |

@@ -261,8 +261,10 @@ await _context.SaveChangesAsync();
 - GetById — delegates to read repository
 - GetAll — returns paged result
 - GetAll — passes filter params (roleId, menuId, pageId) to repository
-- Update — flips `IsAllowed` value
-- Update — throws `KeyNotFoundException` when record not found
+- Update — toggles `IsAllowed` false → true
+- Update — toggles `IsAllowed` true → false
+- Update — wrong `roleId` for existing record: throws `KeyNotFoundException`
+- Update — record `id` not found: throws `KeyNotFoundException`
 
 ### AuditLogService
 - GetByEntity — returns paged result for entity name + id

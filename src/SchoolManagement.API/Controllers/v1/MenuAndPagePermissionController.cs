@@ -19,14 +19,14 @@ public sealed class MenuAndPagePermissionController : ControllerBase
     public MenuAndPagePermissionController(IMenuAndPagePermissionService permissionService)
         => _permissionService = permissionService;
 
-    /// <summary>Update the IsAllowed flag on a permission row.</summary>
-    [HttpPut("{id:int}")]
-    [SwaggerOperation(Summary = "Update Permission", Tags = new[] { "Master - Permission" })]
+    /// <summary>Toggle the IsAllowed flag on a permission row.</summary>
+    [HttpPut("{id:int}/{roleId:int}")]
+    [SwaggerOperation(Summary = "Toggle Permission", Tags = new[] { "Master - Permission" })]
     [ProducesResponseType(typeof(ApiResponse<MenuAndPagePermissionResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Update(int id, [FromBody] UpdatePermissionRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Update(int id, int roleId, CancellationToken cancellationToken)
     {
-        var result = await _permissionService.UpdateAsync(id, request, cancellationToken);
+        var result = await _permissionService.UpdateAsync(id, roleId, cancellationToken);
         return Ok(ApiResponse<MenuAndPagePermissionResponse>.Ok(result, HttpContext.TraceIdentifier));
     }
 

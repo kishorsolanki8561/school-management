@@ -2,11 +2,6 @@ using SchoolManagement.Models.Enums;
 
 namespace SchoolManagement.Models.DTOs.Master;
 
-public sealed class UpdatePermissionRequest
-{
-    public bool IsAllowed { get; init; }
-}
-
 public sealed class MenuAndPagePermissionResponse
 {
     public int        Id           { get; init; }
