@@ -32,6 +32,7 @@ public sealed class SchoolManagementDbContext : DbContext
     public DbSet<PageMasterModule>              PageMasterModules               => Set<PageMasterModule>();
     public DbSet<PageMasterModuleActionMapping> PageMasterModuleActionMappings  => Set<PageMasterModuleActionMapping>();
     public DbSet<MenuAndPagePermission>         MenuAndPagePermissions          => Set<MenuAndPagePermission>();
+    public DbSet<OrgFileUploadConfig>           OrgFileUploadConfigs            => Set<OrgFileUploadConfig>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

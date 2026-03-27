@@ -93,4 +93,16 @@ public static class AppMessages
             => $"Permission with id {id} was not found.";
     }
 
+    public static class OrgFileUploadConfig
+    {
+        public static string NotFound(int id)
+            => $"File upload config with id {id} was not found.";
+
+        public static string AlreadyExists(int orgId, int pageId)
+            => $"A file upload config for org {orgId} and page {pageId} already exists.";
+
+        public static string MultipleFilesNotAllowed
+            => "Multiple file uploads are not allowed for this screen.";
+    }
+
 }
