@@ -79,4 +79,58 @@ public sealed class AuditLogServiceTests
         result.Total.Should().Be(1);
         result.Items.First().TableName.Should().Be("Countries");
     }
+
+    // ── GetByEntityHierarchyAsync ─────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetByEntityHierarchyAsync_WhenNoBatches_ReturnsEmptyPagedResult()
+    {
+        _readRepoMock
+            .Setup(r => r.QueryFirstOrDefaultAsync<int>(It.IsAny<string>(), It.IsAny<object>()))
+            .ReturnsAsync(0);
+
+        var result = await _sut.GetByEntityHierarchyAsync("5", null, null, new PaginationRequest());
+
+        result.Total.Should().Be(0);
+        result.Items.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetByEntityHierarchyAsync_WithEntityNameFilter_WhenNoBatches_ReturnsEmpty()
+    {
+        _readRepoMock
+            .Setup(r => r.QueryFirstOrDefaultAsync<int>(It.IsAny<string>(), It.IsAny<object>()))
+            .ReturnsAsync(0);
+
+        var result = await _sut.GetByEntityHierarchyAsync("5", "Country", null, new PaginationRequest());
+
+        result.Total.Should().Be(0);
+        result.Items.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetByEntityHierarchyAsync_WithScreenNameFilter_WhenNoBatches_ReturnsEmpty()
+    {
+        _readRepoMock
+            .Setup(r => r.QueryFirstOrDefaultAsync<int>(It.IsAny<string>(), It.IsAny<object>()))
+            .ReturnsAsync(0);
+
+        var result = await _sut.GetByEntityHierarchyAsync("5", null, "Country Management", new PaginationRequest());
+
+        result.Total.Should().Be(0);
+        result.Items.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetByEntityHierarchyAsync_WithAllFilters_WhenNoBatches_ReturnsEmpty()
+    {
+        _readRepoMock
+            .Setup(r => r.QueryFirstOrDefaultAsync<int>(It.IsAny<string>(), It.IsAny<object>()))
+            .ReturnsAsync(0);
+
+        var result = await _sut.GetByEntityHierarchyAsync("5", "Country", "Country Management", new PaginationRequest());
+
+        result.Total.Should().Be(0);
+        result.Items.Should().BeEmpty();
+    }
 }

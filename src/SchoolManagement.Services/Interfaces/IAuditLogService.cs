@@ -12,8 +12,11 @@ public interface IAuditLogService
     Task<PagedResult<AuditLog>> GetByTableAsync(string tableName, PaginationRequest pagination, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Returns paginated batches for a given entity, each batch containing a full parent-child
+    /// Returns paginated batches for a given EntityId, each batch containing a full parent-child
     /// hierarchy tree of every audit log row saved in the same DB transaction (BatchId).
+    /// <paramref name="entityName"/> and <paramref name="screenName"/> are optional extra filters.
     /// </summary>
-    Task<PagedResult<AuditLogBatchResponse>> GetByEntityHierarchyAsync(string entityName, string entityId, PaginationRequest pagination, CancellationToken cancellationToken = default);
+    Task<PagedResult<AuditLogBatchResponse>> GetByEntityHierarchyAsync(
+        string entityId, string? entityName, string? screenName,
+        PaginationRequest pagination, CancellationToken cancellationToken = default);
 }

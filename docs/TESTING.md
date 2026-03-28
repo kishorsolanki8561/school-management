@@ -41,7 +41,7 @@ dotnet test --collect:"XPlat Code Coverage"
 | CityService | `Services/CityServiceTests.cs` | CRUD, state-city relationship, invalid stateId |
 | OrganizationService | `Services/OrganizationServiceTests.cs` | Create, Update, Delete, GetById, GetAll, duplicate name validation |
 | AuthService | `Services/AuthServiceTests.cs` | Login, register, refresh token, logout, forgot/reset password, multi-role + org assignment |
-| AuditLogService | `Services/AuditLogServiceTests.cs` | GetByEntity, GetByUser, GetByScreen, GetByTable |
+| AuditLogService | `Services/AuditLogServiceTests.cs` | GetByEntity, GetByUser, GetByScreen, GetByTable, GetByEntityHierarchy (empty-batch cases) |
 | DapperAuditExecutor | `Services/DapperAuditExecutorTests.cs` | Skip on null context / zero rows / unconfigured table; Created saves NewData; Updated saves only changed columns; no-op when nothing changed; bool → Yes/No; null columns excluded; request context stamped |
 | QueryBuilder | `Services/QueryBuilderTests.cs` | Default sort, defaultSortDescending, valid column, sortDescending, invalid/injection fallback, unknown column, case-insensitive match, base SQL preserved, pagination clause appended |
 | MenuMasterService | `Services/MenuMasterServiceTests.cs` | Create, Update, Delete, GetById, GetAll, cascade soft-delete (pages/modules/actions/permissions) |
@@ -321,6 +321,10 @@ await _context.SaveChangesAsync();
 - GetByUser — returns paged result for user id
 - GetByScreen — returns paged result for screen name
 - GetByTable — returns paged result for table name
+- GetByEntityHierarchyAsync — entityId only, no batches found → returns empty paged result
+- GetByEntityHierarchyAsync — entityId + entityName filter, no batches → returns empty paged result
+- GetByEntityHierarchyAsync — entityId + screenName filter, no batches → returns empty paged result
+- GetByEntityHierarchyAsync — all three filters provided, no batches → returns empty paged result
 
 ### OrganizationService
 - Create — returns mapped `OrganizationResponse`

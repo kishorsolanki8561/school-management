@@ -587,7 +587,7 @@ Get audit history for a specific record (e.g., all changes to Country with Id 5)
       "action": "Updated",
       "oldData": "{...}",
       "newData": "{...}",
-      "modifiedBy": "admin",        // null when action = "Created"; username for "Updated" / "Deleted"
+      "modifiedBy": "admin",
       "createdBy": "admin",
       "ipAddress": "192.168.1.1",
       "location": "Localhost",
@@ -604,6 +604,8 @@ Get audit history for a specific record (e.g., all changes to Country with Id 5)
   "totalPages": 1
 }
 ```
+
+> `modifiedBy` is `null` when `action = "Created"`; contains the username for `"Updated"` / `"Deleted"` actions.
 
 ---
 
@@ -629,6 +631,61 @@ Get all audit entries for a specific DB table (matched against `TableName` colum
 **Example:** `/audit-log/table/Countries`
 
 **Query Parameters** — `page`, `pageSize`, `dateFrom`, `dateTo`, `sortBy`, `sortDescending`.
+
+---
+
+### GET `/audit-log/hierarchy/{entityId}?entityName=&screenName=`
+Get paginated audit history with full parent-child hierarchy grouped by `BatchId`.
+
+Each page item is one DB-transaction batch. Root nodes contain child records
+(e.g. `PageMasterModules` nested under `PageMaster`) linked via `ParentAuditLogId`.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `entityId` | string | **Yes** | The entity record ID to look up |
+| `entityName` | string | No | Optional: narrow to a specific entity type (e.g. `"Country"`) |
+| `screenName` | string | No | Optional: narrow to entries from a specific screen |
+| `page` | int | No | Page number (default `1`) — paging is over **batches**, not individual rows |
+| `pageSize` | int | No | Batches per page (default `20`) |
+
+**Response `data`** — `PagedResult<AuditLogBatchResponse>`
+```json
+{
+  "items": [
+    {
+      "batchId": "3fa85f64...",
+      "timestamp": "2026-03-28T09:00:00Z",
+      "screenName": "Country Management",
+      "createdBy": "admin",
+      "modifiedBy": null,
+      "ipAddress": "192.168.1.1",
+      "location": "Localhost",
+      "entries": [
+        {
+          "id": 1,
+          "entityName": "Country",
+          "entityId": "5",
+          "action": "Created",
+          "oldData": null,
+          "newData": "{...}",
+          "modifiedBy": null,
+          "createdBy": "admin",
+          "screenName": "Country Management",
+          "tableName": "Countries",
+          "timestamp": "2026-03-28T09:00:00Z",
+          "ipAddress": "192.168.1.1",
+          "location": "Localhost",
+          "children": []
+        }
+      ]
+    }
+  ],
+  "totalCount": 3,
+  "page": 1,
+  "pageSize": 20,
+  "totalPages": 1
+}
+```
 
 ---
 
@@ -850,10 +907,11 @@ Returns `400 Bad Request` if:
 | GET | `/menu-and-page-permission/{id}` | Yes | Get permission by ID |
 | GET | `/menu-and-page-permission` | Yes | List permissions (filterable) |
 | PUT | `/menu-and-page-permission/{id}/{roleId}` | Yes | Toggle IsAllowed (no body) |
-| GET | `/audit-log/entity/{name}/{id}` | Yes | Audit history for a record |
+| GET | `/audit-log/entity/{name}/{id}` | Yes | Audit history for a record (flat) |
 | GET | `/audit-log/user/{userId}` | Yes | Audit entries by user |
 | GET | `/audit-log/screen/{screenName}` | Yes | Audit entries by screen |
 | GET | `/audit-log/table/{tableName}` | Yes | Audit entries by table |
+| GET | `/audit-log/hierarchy/{entityId}` | Yes | Audit hierarchy by EntityId (+ optional entityName, screenName) |
 | POST | `/org-file-upload-config` | Yes | Create org file upload config |
 | PUT | `/org-file-upload-config/{id}` | Yes | Update org file upload config |
 | GET | `/org-file-upload-config/{id}` | Yes | Get config by ID |

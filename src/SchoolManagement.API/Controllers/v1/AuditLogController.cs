@@ -74,21 +74,23 @@ public sealed class AuditLogController : ControllerBase
     }
 
     /// <summary>
-    /// Get paginated audit history for a specific entity with full batch hierarchy.
+    /// Get paginated audit history with full batch hierarchy grouped by BatchId.
+    /// EntityId is required. EntityName and ScreenName are optional filters.
     /// Each page item is one DB-transaction batch; root nodes contain child records
     /// (e.g. PageMasterModules nested under PageMaster) linked via ParentAuditLogId.
     /// </summary>
-    [HttpGet("entity/{entityName}/{entityId}/hierarchy")]
-    [SwaggerOperation(Summary = "Get Audit Log Hierarchy by Entity", Tags = new[] { "Audit Log" })]
+    [HttpGet("hierarchy/{entityId}")]
+    [SwaggerOperation(Summary = "Get Audit Log Hierarchy by EntityId", Tags = new[] { "Audit Log" })]
     [ProducesResponseType(typeof(ApiResponse<PagedResult<AuditLogBatchResponse>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetByEntityHierarchy(
-        string entityName,
         string entityId,
+        [FromQuery] string? entityName,
+        [FromQuery] string? screenName,
         [FromQuery] PaginationRequest pagination,
         CancellationToken cancellationToken)
     {
         var result = await _auditLogService.GetByEntityHierarchyAsync(
-            entityName, entityId, pagination, cancellationToken);
+            entityId, entityName, screenName, pagination, cancellationToken);
         return Ok(ApiResponse<PagedResult<AuditLogBatchResponse>>.Ok(result, HttpContext.TraceIdentifier));
     }
 }

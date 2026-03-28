@@ -109,15 +109,19 @@ public sealed class AuditLogService : IAuditLogService
     // ── Hierarchy ─────────────────────────────────────────────────────────────
 
     public async Task<PagedResult<AuditLogBatchResponse>> GetByEntityHierarchyAsync(
-        string entityName, string entityId,
+        string entityId, string? entityName, string? screenName,
         PaginationRequest pagination,
         CancellationToken cancellationToken = default)
     {
-        var entityParam = new { EntityName = entityName, EntityId = entityId };
+        // Treat blank strings the same as null so SQL @Param IS NULL short-circuit fires correctly
+        entityName = string.IsNullOrWhiteSpace(entityName) ? null : entityName.Trim();
+        screenName = string.IsNullOrWhiteSpace(screenName) ? null : screenName.Trim();
 
-        // Step 1: total number of distinct batches for this entity
+        var filterParam = new { EntityId = entityId, EntityName = entityName, ScreenName = screenName };
+
+        // Step 1: total number of distinct batches for this entityId
         var total = await _readRepo.QueryFirstOrDefaultAsync<int>(
-            AuditLogQueries.CountBatchesByEntity, entityParam);
+            AuditLogQueries.CountBatchesByEntityId, filterParam);
 
         if (total == 0)
             return PagedResult<AuditLogBatchResponse>.Create(
@@ -126,14 +130,15 @@ public sealed class AuditLogService : IAuditLogService
         // Step 2: paginated batch IDs ordered by most-recent first
         var batchParam = new
         {
-            EntityName = entityName,
             EntityId   = entityId,
+            EntityName = entityName,
+            ScreenName = screenName,
             pagination.PageSize,
             Offset     = pagination.Offset,
         };
 
         var batchRows = (await _readRepo.QueryAsync<BatchRow>(
-            AuditLogQueries.GetBatchIdsByEntity, batchParam)).ToList();
+            AuditLogQueries.GetBatchIdsByEntityId, batchParam)).ToList();
 
         if (batchRows.Count == 0)
             return PagedResult<AuditLogBatchResponse>.Create(
@@ -156,10 +161,10 @@ public sealed class AuditLogService : IAuditLogService
                 ? group
                 : new List<AuditLog>();
 
-            // Use the audit row for the requested entity as the context source
+            // Use the audit row that matches the requested entity as context source
             var contextEntry = logsInBatch.FirstOrDefault(l =>
-                                   string.Equals(l.EntityName, entityName, StringComparison.OrdinalIgnoreCase)
-                                   && l.EntityId == entityId)
+                                   l.EntityId == entityId
+                                   && (entityName == null || string.Equals(l.EntityName, entityName, StringComparison.OrdinalIgnoreCase)))
                                ?? logsInBatch.FirstOrDefault();
 
             return new AuditLogBatchResponse

@@ -47,23 +47,27 @@ internal static class AuditLogQueries
     // ── Hierarchy (batch-grouped) queries ─────────────────────────────────────
 
     /// <summary>
-    /// Returns one row per distinct BatchId that contains an entry for the requested entity,
-    /// ordered by the earliest timestamp in the batch (most-recent first).
-    /// Used to drive paging — each "page" is N batches.
+    /// Returns one row per distinct BatchId for the given EntityId.
+    /// EntityName and ScreenName are optional extra filters (pass NULL to skip).
+    /// Ordered most-recent first; supports pagination via OFFSET / FETCH.
     /// </summary>
-    public const string GetBatchIdsByEntity = @"
+    public const string GetBatchIdsByEntityId = @"
         SELECT BatchId, MIN(Timestamp) AS BatchTimestamp
         FROM AuditLogs
-        WHERE EntityName = @EntityName AND EntityId = @EntityId
+        WHERE EntityId = @EntityId
+          AND (@EntityName IS NULL OR EntityName = @EntityName)
+          AND (@ScreenName IS NULL OR ScreenName = @ScreenName)
         GROUP BY BatchId
         ORDER BY BatchTimestamp DESC
         OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY";
 
-    /// <summary>Total number of distinct batches that touched the requested entity.</summary>
-    public const string CountBatchesByEntity = @"
+    /// <summary>Total number of distinct batches that contain the requested EntityId.</summary>
+    public const string CountBatchesByEntityId = @"
         SELECT COUNT(DISTINCT BatchId)
         FROM AuditLogs
-        WHERE EntityName = @EntityName AND EntityId = @EntityId";
+        WHERE EntityId = @EntityId
+          AND (@EntityName IS NULL OR EntityName = @EntityName)
+          AND (@ScreenName IS NULL OR ScreenName = @ScreenName)";
 
     /// <summary>
     /// Fetches every audit log row that belongs to the given set of BatchIds.
