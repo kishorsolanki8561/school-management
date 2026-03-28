@@ -19,6 +19,7 @@ public static class ServicesExtensions
         services.AddScoped<IMenuAndPagePermissionService,   MenuAndPagePermissionService>();
         services.AddScoped<IOrgFileUploadConfigService,     OrgFileUploadConfigService>();
         services.AddScoped<IFileUploadService,              FileUploadService>();
+        services.AddScoped<IDropdownService, DropdownService>();
         return services;
     }
 }

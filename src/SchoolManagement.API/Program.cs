@@ -41,11 +41,34 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerDocs();
 
-// ── CORS (configure per environment) ─────────────────────────────────────────
+// ── CORS ──────────────────────────────────────────────────────────────────────
+// Origins are configured in appsettings.json → CorsSettings:AllowedOrigins.
+// Add your UI origin (e.g. http://localhost:4200 or https://app.yourdomain.com).
+// AllowCredentials() is required so the browser forwards the Authorization header.
+// Note: AllowCredentials() cannot be combined with AllowAnyOrigin(); specific
+// origins must always be listed in CorsSettings:AllowedOrigins.
+const string CorsPolicy = "SchoolManagementCors";
+
 builder.Services.AddCors(options =>
 {
-    options.AddDefaultPolicy(policy =>
-        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+    options.AddPolicy(CorsPolicy, policy =>
+    {
+        var origins = InitializeConfiguration.CorsSettings.AllowedOrigins;
+
+        if (origins is { Length: > 0 })
+        {
+            policy.WithOrigins(origins)
+                  .AllowAnyMethod()
+                  .AllowAnyHeader()
+                  .AllowCredentials()
+                  .SetIsOriginAllowedToAllowWildcardSubdomains();
+        }
+        else
+        {
+            // Fallback: allow all origins without credentials (dev convenience only)
+            policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+        }
+    });
 });
 
 var app = builder.Build();
@@ -66,7 +89,7 @@ app.UseSwaggerDocs(apiVersionProvider);
 app.UseHttpsRedirection();
 
 // 4. CORS
-app.UseCors();
+app.UseCors(CorsPolicy);
 
 // 5. Authentication & Authorization — must run before RequestContextMiddleware
 //    so context.User is populated from the JWT before we read its claims

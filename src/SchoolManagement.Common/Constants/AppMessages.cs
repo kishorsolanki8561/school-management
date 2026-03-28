@@ -105,4 +105,16 @@ public static class AppMessages
             => "Multiple file uploads are not allowed for this screen.";
     }
 
+    public static class Dropdown
+    {
+        public static string UnknownKey(string key)
+            => $"Dropdown key '{key}' is not registered.";
+
+        public static string InvalidExtraColumns(string[] cols)
+            => $"Extra column(s) not allowed: {string.Join(", ", cols)}.";
+
+        public static string InvalidFilterColumns(string[] cols)
+            => $"Filter column(s) not allowed: {string.Join(", ", cols)}.";
+    }
+
 }

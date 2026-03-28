@@ -45,6 +45,12 @@ public sealed class ReadRepository : IReadRepository
         return PagedResult<T>.Create(items, total, page, pageSize);
     }
 
+    public async Task<IEnumerable<dynamic>> QueryDynamicAsync(string sql, object? param = null)
+    {
+        await using var connection = new SqlConnection(_connectionString);
+        return await connection.QueryAsync<dynamic>(sql, param);
+    }
+
     /// <summary>
     /// Converts a Dapper parameter object (anonymous type, DynamicParameters, or POCO)
     /// into a human-readable key=value list — useful for logging and debugging.
