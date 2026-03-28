@@ -583,6 +583,126 @@ Get all audit entries for a specific DB table (matched against `TableName` colum
 
 ---
 
+## Org File Upload Config Module
+
+Manages per-screen file upload validation rules per organisation. All endpoints require auth (`Bearer`).
+
+> **OwnerAdmin** always bypasses org config and uses `FileUploadDefaults` from `appsettings.json`.
+
+### POST `/org-file-upload-config`
+Create a file upload config for a specific org + screen combination.
+
+**Request**
+```json
+{
+  "orgId": 1,
+  "pageId": 3,
+  "allowedExtensions": ".pdf,.jpg,.png",
+  "allowedMimeTypes": "application/pdf,image/jpeg,image/png",
+  "maxFileSizeBytes": 5242880,
+  "allowMultiple": false
+}
+```
+
+**Response `data`** — `OrgFileUploadConfigResponse`
+```json
+{
+  "id": 1,
+  "orgId": 1,
+  "pageId": 3,
+  "allowedExtensions": ".pdf,.jpg,.png",
+  "allowedMimeTypes": "application/pdf,image/jpeg,image/png",
+  "maxFileSizeBytes": 5242880,
+  "allowMultiple": false,
+  "isActive": true,
+  "createdAt": "2026-03-27T00:00:00Z"
+}
+```
+
+Returns `409 Conflict` if a config for `(orgId, pageId)` already exists.
+
+---
+
+### PUT `/org-file-upload-config/{id}`
+Update an existing file upload config.
+
+**Request**
+```json
+{
+  "allowedExtensions": ".pdf,.docx",
+  "allowedMimeTypes": "application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "maxFileSizeBytes": 10485760,
+  "allowMultiple": true,
+  "isActive": true
+}
+```
+
+---
+
+### GET `/org-file-upload-config/{id}`
+Get a file upload config by ID.
+
+---
+
+### GET `/org-file-upload-config/screen?orgId={int}&pageId={int}`
+Get the active file upload config for a specific org and screen (used at upload time to determine validation rules).
+
+Returns `404` if no active config exists for the `(orgId, pageId)` pair.
+
+---
+
+## File Upload Module
+
+All endpoints require auth (`Bearer`).
+
+### POST `/file-upload?pageId={int?}&orgId={int?}`
+Upload one or more files. Both query parameters are optional.
+
+**Content-Type:** `multipart/form-data`
+
+**Form Fields**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `files` | `IFormFile[]` | Yes | One or more files |
+| `pageId` | int (query) | No | Screen page ID — used to resolve folder name and org config |
+| `orgId` | int (query) | No | Organisation ID — used to resolve folder name and org config |
+
+**Folder Resolution Logic**
+
+| orgId | pageId | Upload folder |
+|---|---|---|
+| Provided | Provided | `{OrgName}/{PageName}` |
+| null | Provided | `{PageName}` |
+| Provided | null | `{OrgName}` |
+| null | null | `AllAttachment` |
+
+**Config Resolution Logic**
+
+| Caller role | orgId | pageId | Config used |
+|---|---|---|---|
+| `OwnerAdmin` | any | any | `appsettings.json` defaults |
+| Other | Provided | Provided | `OrgFileUploadConfig` for `(orgId, pageId)` (falls back to defaults if none found) |
+| Other | null or missing | — | `appsettings.json` defaults |
+
+**Response `data`** — `IList<FileUploadResponse>`
+```json
+[
+  {
+    "fileName": "invoice.pdf",
+    "filePath": "/uploads/Sunrise Academy/Admissions/a1b2c3d4.pdf",
+    "sizeBytes": 4096,
+    "contentType": "application/pdf"
+  }
+]
+```
+
+Returns `400 Bad Request` if:
+- A file fails extension / MIME type / size validation
+- Multiple files are submitted but `allowMultiple = false`
+
+---
+
 ## Endpoint Summary
 
 | Method | Route | Auth | Description |
@@ -633,3 +753,8 @@ Get all audit entries for a specific DB table (matched against `TableName` colum
 | GET | `/audit-log/user/{userId}` | Yes | Audit entries by user |
 | GET | `/audit-log/screen/{screenName}` | Yes | Audit entries by screen |
 | GET | `/audit-log/table/{tableName}` | Yes | Audit entries by table |
+| POST | `/org-file-upload-config` | Yes | Create org file upload config |
+| PUT | `/org-file-upload-config/{id}` | Yes | Update org file upload config |
+| GET | `/org-file-upload-config/{id}` | Yes | Get config by ID |
+| GET | `/org-file-upload-config/screen` | Yes | Get config by orgId + pageId |
+| POST | `/file-upload` | Yes | Upload files (multipart/form-data) |

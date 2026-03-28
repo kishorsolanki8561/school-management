@@ -46,6 +46,8 @@ dotnet test --collect:"XPlat Code Coverage"
 | MenuMasterService | `Services/MenuMasterServiceTests.cs` | Create, Update, Delete, GetById, GetAll, cascade soft-delete (pages/modules/actions/permissions) |
 | PageMasterService | `Services/PageMasterServiceTests.cs` | Hierarchical create (modules+actions+permissions), default all-action-types, multi-module, HasChild rules, duplicate skip, scalar update, new module upsert, cascade delete, GetAll paged |
 | MenuAndPagePermission | `Services/MenuAndPagePermissionServiceTests.cs` | GetById, GetAll with filters, UpdateAsync flip IsAllowed, NotFound |
+| OrgFileUploadConfigService | `Services/OrgFileUploadConfigServiceTests.cs` | Create, duplicate check, Update, UpdateNotFound, GetById (delegated), GetByScreen (delegated) |
+| FileUploadService | `Services/FileUploadServiceTests.cs` | OwnerAdmin uses defaults, org config resolves, fallback to defaults, AllowMultiple=false blocks 2 files, invalid extension/size throw, valid upload returns response, folder resolution (OrgName/PageName / PageName / OrgName / AllAttachment) |
 | EncryptionService | `Common/EncryptionServiceTests.cs` | AES-256-GCM encrypt/decrypt, RSA key operations |
 | FilesValidator | `Common/FilesValidatorTests.cs` | File type, size, and extension validation |
 | HashingUtility | `Common/HashingUtilityTests.cs` | Password hashing and verification |
@@ -265,6 +267,29 @@ await _context.SaveChangesAsync();
 - Update — toggles `IsAllowed` true → false
 - Update — wrong `roleId` for existing record: throws `KeyNotFoundException`
 - Update — record `id` not found: throws `KeyNotFoundException`
+
+### OrgFileUploadConfigService
+- Create — persists config and returns `OrgFileUploadConfigResponse`
+- Create — throws `InvalidOperationException` when `(OrgId, PageId)` already exists
+- Update — updates all config fields correctly
+- Update — throws `KeyNotFoundException` when ID not found
+- GetById — delegates to `IReadRepository`; returns `null` when not found
+- GetByScreen — delegates to `IReadRepository` by `(OrgId, PageId)`; returns `null` when not found
+
+### FileUploadService
+- OwnerAdmin — always uses `appsettings.json` defaults even when org config exists
+- Non-admin with org config — uses `OrgFileUploadConfig` for `(orgId, pageId)`
+- Non-admin without org config — falls back to `appsettings.json` defaults
+- `AllowMultiple = false` + 2 files — throws `InvalidOperationException`
+- OwnerAdmin default `AllowMultiple = false` + 2 files — throws `InvalidOperationException`
+- Invalid file extension — throws `ArgumentException` matching `*extension*`
+- File too large — throws `ArgumentException` matching `*size*`
+- Valid single file — returns `FileUploadResponse` with correct `FileName`, `SizeBytes`, `ContentType`, `FilePath`
+- `AllowMultiple = true` — all files returned in response list
+- Folder = `{OrgName}/{PageName}` when both orgId and pageId are provided
+- Folder = `{PageName}` when orgId is null
+- Folder = `{OrgName}` when pageId is null
+- Folder = `AllAttachment` when both orgId and pageId are null
 
 ### AuditLogService
 - GetByEntity — returns paged result for entity name + id

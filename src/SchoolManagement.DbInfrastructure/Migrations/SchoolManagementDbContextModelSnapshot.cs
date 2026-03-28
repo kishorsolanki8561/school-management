@@ -445,6 +445,63 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                     b.ToTable("Organizations");
                 });
 
+            modelBuilder.Entity("SchoolManagement.Models.Entities.OrgCustomRoleConfiguration", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<int>("BaseRoleId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("IpAddress")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Location")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("OrgId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BaseRoleId");
+
+                    b.HasIndex("OrgId", "BaseRoleId")
+                        .IsUnique();
+
+                    b.ToTable("OrgCustomRoleConfigurations");
+                });
+
             modelBuilder.Entity("SchoolManagement.Models.Entities.OrgFileUploadConfig", b =>
                 {
                     b.Property<int>("Id")
@@ -511,6 +568,71 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("OrgFileUploadConfigs");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Models.Entities.OrgRolePermission", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<int>("ActionId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("IpAddress")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsAllowed")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Location")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("MenuId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("OrgRoleId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PageId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PageModuleId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MenuId");
+
+                    b.HasIndex("PageId");
+
+                    b.HasIndex("PageModuleId");
+
+                    b.HasIndex("OrgRoleId", "MenuId", "PageId", "PageModuleId", "ActionId")
+                        .IsUnique();
+
+                    b.ToTable("OrgRolePermissions");
                 });
 
             modelBuilder.Entity("SchoolManagement.Models.Entities.PageMaster", b =>
@@ -971,6 +1093,63 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                     b.ToTable("UserOrganizationMappings");
                 });
 
+            modelBuilder.Entity("SchoolManagement.Models.Entities.UserOrgRoleMapping", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("IpAddress")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Location")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("OrgId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OrgRoleId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrgId");
+
+                    b.HasIndex("OrgRoleId");
+
+                    b.HasIndex("UserId", "OrgId")
+                        .IsUnique();
+
+                    b.ToTable("UserOrgRoleMappings");
+                });
+
             modelBuilder.Entity("SchoolManagement.Models.Entities.UserRoleMapping", b =>
                 {
                     b.Property<int>("Id")
@@ -1076,6 +1255,25 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                     b.Navigation("ParentMenu");
                 });
 
+            modelBuilder.Entity("SchoolManagement.Models.Entities.OrgCustomRoleConfiguration", b =>
+                {
+                    b.HasOne("SchoolManagement.Models.Entities.Role", "BaseRole")
+                        .WithMany()
+                        .HasForeignKey("BaseRoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SchoolManagement.Models.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrgId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("BaseRole");
+
+                    b.Navigation("Organization");
+                });
+
             modelBuilder.Entity("SchoolManagement.Models.Entities.OrgFileUploadConfig", b =>
                 {
                     b.HasOne("SchoolManagement.Models.Entities.Organization", "Organization")
@@ -1093,6 +1291,41 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                     b.Navigation("Organization");
 
                     b.Navigation("Page");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Models.Entities.OrgRolePermission", b =>
+                {
+                    b.HasOne("SchoolManagement.Models.Entities.MenuMaster", "Menu")
+                        .WithMany()
+                        .HasForeignKey("MenuId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SchoolManagement.Models.Entities.OrgCustomRoleConfiguration", "OrgRole")
+                        .WithMany("OrgRolePermissions")
+                        .HasForeignKey("OrgRoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SchoolManagement.Models.Entities.PageMaster", "Page")
+                        .WithMany()
+                        .HasForeignKey("PageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SchoolManagement.Models.Entities.PageMasterModule", "PageModule")
+                        .WithMany()
+                        .HasForeignKey("PageModuleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Menu");
+
+                    b.Navigation("OrgRole");
+
+                    b.Navigation("Page");
+
+                    b.Navigation("PageModule");
                 });
 
             modelBuilder.Entity("SchoolManagement.Models.Entities.PageMaster", b =>
@@ -1186,6 +1419,33 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("SchoolManagement.Models.Entities.UserOrgRoleMapping", b =>
+                {
+                    b.HasOne("SchoolManagement.Models.Entities.Organization", "Org")
+                        .WithMany()
+                        .HasForeignKey("OrgId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SchoolManagement.Models.Entities.OrgCustomRoleConfiguration", "OrgRole")
+                        .WithMany("UserOrgRoleMappings")
+                        .HasForeignKey("OrgRoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SchoolManagement.Models.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Org");
+
+                    b.Navigation("OrgRole");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("SchoolManagement.Models.Entities.UserRoleMapping", b =>
                 {
                     b.HasOne("SchoolManagement.Models.Entities.Role", "Role")
@@ -1220,6 +1480,13 @@ namespace SchoolManagement.DbInfrastructure.Migrations
             modelBuilder.Entity("SchoolManagement.Models.Entities.Organization", b =>
                 {
                     b.Navigation("UserOrganizationMappings");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Models.Entities.OrgCustomRoleConfiguration", b =>
+                {
+                    b.Navigation("OrgRolePermissions");
+
+                    b.Navigation("UserOrgRoleMappings");
                 });
 
             modelBuilder.Entity("SchoolManagement.Models.Entities.PageMaster", b =>
