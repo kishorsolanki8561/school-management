@@ -1,13 +1,31 @@
 {
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "iisSettings": {
+    "windowsAuthentication": false,
+    "anonymousAuthentication": true,
+    "iisExpress": {
+      "applicationUrl": "http://localhost:10638",
+      "sslPort": 0
+    }
+  },
   "profiles": {
     "SchoolManagement.API": {
       "commandName": "Project",
+      "dotnetRunMessages": true,
       "launchBrowser": true,
       "launchUrl": "swagger",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
       "applicationUrl": "https://localhost:51668;http://localhost:51669"
+    },
+    "IIS Express": {
+      "commandName": "IISExpress",
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
     }
   }
 }

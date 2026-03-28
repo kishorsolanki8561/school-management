@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using SchoolManagement.Common.Constants;
 
 namespace SchoolManagement.Common.Configuration;
 
@@ -8,6 +9,7 @@ namespace SchoolManagement.Common.Configuration;
 /// </summary>
 public static class InitializeConfiguration
 {
+    public static ConnectionStrings  ConnectionStrings  { get; } = new();
     public static JwtSettings        JwtSettings        { get; } = new();
     public static EncryptionSettings EncryptionSettings { get; } = new();
     public static DatabaseSettings   DatabaseSettings   { get; } = new();
@@ -24,5 +26,9 @@ public static class InitializeConfiguration
         configuration.GetSection(nameof(EmailSettings)).Bind(EmailSettings);
         configuration.GetSection(nameof(FileUploadDefaults)).Bind(FileUploadDefaults);
         configuration.GetSection(nameof(CorsSettings)).Bind(CorsSettings);
+        configuration.GetSection(nameof(ConnectionStrings)).Bind(ConnectionStrings);
+
+        if (string.IsNullOrWhiteSpace(ConnectionStrings.DefaultConnection))
+            throw new InvalidOperationException(AppMessages.General.ConnectionStringMissing);
     }
 }

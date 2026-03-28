@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using SchoolManagement.Common.Configuration;
-using SchoolManagement.Common.Constants;
 using SchoolManagement.Common.Helpers;
 using SchoolManagement.Common.Services;
 using SchoolManagement.DbInfrastructure.Context;
@@ -15,10 +14,7 @@ public static class DbInfrastructureExtensions
 {
     public static IServiceCollection AddDbInfrastructure(this IServiceCollection services)
     {
-        var connectionString  =AppConfigFactory.Configuration?
-            .GetSection("ConnectionStrings:DefaultConnection")?.Value
-            ?? throw new InvalidOperationException(AppMessages.General.ConnectionStringMissing);
-        //var connectionString = InitializeConfiguration.ConnectionString;
+        var connectionString = InitializeConfiguration.ConnectionStrings.DefaultConnection;
         var dbSettings       = InitializeConfiguration.DatabaseSettings;
 
         // Register EF Core DbContext with AuditInterceptor
