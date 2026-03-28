@@ -68,7 +68,7 @@ All `GET` list endpoints accept these standard query parameters via `[FromQuery]
 | `dateFrom` | datetime | — | Inclusive lower bound on `CreatedAt` (or `Timestamp` for AuditLog) |
 | `dateTo` | datetime | — | Inclusive upper bound on `CreatedAt` (or `Timestamp` for AuditLog) |
 
-> `sortBy` column names are validated against a per-entity whitelist in `DropdownRegistry`/`*Queries.cs` — client-supplied column names are **never** injected into SQL directly.
+> `sortBy` column names are validated against a per-entity whitelist in each `*Queries.cs` — client-supplied column names are **never** injected into SQL directly.
 
 ---
 
@@ -469,12 +469,28 @@ Soft-delete a menu and cascade soft-delete all child `PageMasters`, `PageMasterM
 ### GET `/menu-master/{id}`
 Get a menu by ID.
 
+**Response `data`**
+```json
+{
+  "id": 1,
+  "name": "Settings",
+  "hasChild": true,
+  "parentMenuId": null,
+  "parentMenuName": null,
+  "position": 2,
+  "iconClass": "settings",
+  "isActive": true,
+  "isUseMenuForOwnerAdmin": false,
+  "createdAt": "2026-01-01T00:00:00Z"
+}
+```
+
 ---
 
 ### GET `/menu-master`
 Get paginated list of menus.
 
-Query params: `page`, `pageSize`, `search`, `sortBy` (allowed: `Id`, `Name`, `Position`, `IsActive`, `CreatedAt`; default `Position`), `sortDescending`, `status`, `dateFrom`, `dateTo`.
+Query params: `page`, `pageSize`, `search`, `sortBy` (allowed: `Id`, `Name`, `HasChild`, `ParentMenuName`, `Position`, `IsActive`, `CreatedAt`; default `Position`), `sortDescending`, `status`, `dateFrom`, `dateTo`.
 
 ---
 
