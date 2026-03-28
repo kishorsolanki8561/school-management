@@ -23,15 +23,16 @@ public sealed class UpdateMenuRequest
 
 public sealed class MenuResponse
 {
-    public int      Id                    { get; init; }
-    public string   Name                  { get; init; } = string.Empty;
-    public bool     HasChild              { get; init; }
-    public int?     ParentMenuId          { get; init; }
-    public int      Position              { get; init; }
-    public string?  IconClass             { get; init; }
-    public bool     IsActive              { get; init; }
+    public int      Id                     { get; init; }
+    public string   Name                   { get; init; } = string.Empty;
+    public bool     HasChild               { get; init; }
+    public int?     ParentMenuId           { get; init; }
+    public string?  ParentMenuName         { get; init; }
+    public int      Position               { get; init; }
+    public string?  IconClass              { get; init; }
+    public bool     IsActive               { get; init; }
     public bool     IsUseMenuForOwnerAdmin { get; init; }
-    public DateTime CreatedAt             { get; init; }
+    public DateTime CreatedAt              { get; init; }
 }
 
 public sealed class BreadcrumbNodeResponse
