@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SchoolManagement.Common.Configuration;
 using SchoolManagement.Common.Constants;
@@ -14,12 +13,13 @@ namespace SchoolManagement.DbInfrastructure.Extensions;
 
 public static class DbInfrastructureExtensions
 {
-    public static IServiceCollection AddDbInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddDbInfrastructure(this IServiceCollection services)
     {
-        var connectionString = configuration.GetConnectionString("DefaultConnection")
+        var connectionString  =AppConfigFactory.Configuration?
+            .GetSection("ConnectionStrings:DefaultConnection")?.Value
             ?? throw new InvalidOperationException(AppMessages.General.ConnectionStringMissing);
-
-        var dbSettings = InitializeConfiguration.DatabaseSettings;
+        //var connectionString = InitializeConfiguration.ConnectionString;
+        var dbSettings       = InitializeConfiguration.DatabaseSettings;
 
         // Register EF Core DbContext with AuditInterceptor
         services.AddDbContext<SchoolManagementDbContext>((sp, options) =>

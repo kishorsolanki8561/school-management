@@ -16,7 +16,7 @@ InitializeConfiguration.Initialize(builder.Configuration);
 builder.Services.AddCommonServices();
 
 // ── Database + Repositories (EF + Dapper) ─────────────────────────────────────
-builder.Services.AddDbInfrastructure(builder.Configuration);
+builder.Services.AddDbInfrastructure();
 
 // ── Application services (scoped business logic) ──────────────────────────────
 builder.Services.AddApplicationServices();
