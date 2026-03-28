@@ -8,7 +8,8 @@ public sealed class AuditLog
     public string Action { get; init; } = string.Empty;
     public string? OldData { get; init; }
     public string? NewData { get; init; }
-    public string ModifiedBy { get; init; } = string.Empty;
+    /// <summary>Populated only for Updated and Deleted actions; null for Created.</summary>
+    public string? ModifiedBy { get; init; }
     public string? CreatedBy { get; init; }
     public string? IpAddress { get; init; }
     public string? Location { get; init; }

@@ -31,9 +31,9 @@ Dependency direction: API → Services → DbInfrastructure → Models
 - **Program.cs** — DI composition root; wires all modules via extension methods
 
 ### SchoolManagement.Services
-- **Interfaces/** — service contracts (`IAuthService`, `ICountryService`, `IStateService`, `ICityService`, `IAuditLogService`, `IOrganizationService`, `IMenuMasterService`, `IPageMasterService`, `IMenuAndPagePermissionService`)
+- **Interfaces/** — service contracts (`IAuthService`, `ICountryService`, `IStateService`, `ICityService`, `IAuditLogService`, `IOrganizationService`, `IMenuMasterService`, `IPageMasterService`, `IMenuAndPagePermissionService`, `IOrgFileUploadConfigService`, `IFileUploadService`, `IDropdownService`)
 - **Implementations/** — business logic classes
-- **Constants/** — raw Dapper SQL queries per domain (`CountryQueries`, `StateQueries`, `CityQueries`, `AuditLogQueries`, `AuthQueries`, `OrganizationQueries`, `MenuMasterQueries`, `PageMasterQueries`, `MenuAndPagePermissionQueries`)
+- **Constants/** — raw Dapper SQL queries per domain (`CountryQueries`, `StateQueries`, `CityQueries`, `AuditLogQueries`, `AuthQueries`, `OrganizationQueries`, `MenuMasterQueries`, `PageMasterQueries`, `MenuAndPagePermissionQueries`); `DropdownRegistry` (internal whitelist mapping each `DropdownKey` to its table, columns, and allowed extra/filter columns — prevents SQL injection from client column names)
 - **Extensions/ServicesExtensions.cs** — registers all services as `Scoped`
 
 ### SchoolManagement.DbInfrastructure
@@ -45,7 +45,7 @@ Dependency direction: API → Services → DbInfrastructure → Models
   - `AuditTableConfig` / `AuditColumnConfig` / `AuditLookup` — per-table and per-column config (display name, FK lookup, bool display override)
   - `AuditValueHelper` — shared helpers used by both the EF interceptor and the Dapper executor: `GetEffectiveColumns`, `FormatValue` (bool → "Yes"/"No"), `ShouldSkip` (null / IsDeleted=false), `ResolveLookupAsync` (FK id → display value), `BuildFromEntityAsync`
   - `DapperAuditContext` — carries table name, entity id, action, and old/new entity snapshots for Dapper writes
-- **Interceptors/AuditInterceptor** — EF Core `SaveChangesInterceptor`; column-wise old/new capture using `AuditConfiguration`; FK values resolved to display names; booleans formatted as "Yes"/"No"; null and IsDeleted=false values skipped. Parent-child audit linking works generically via EF FK metadata (`FindParentEntity`) — no entity types are hardcoded. `BatchId` is scoped to the active DB transaction (all `SaveChangesAsync` calls inside one transaction share the same batch). `ParentAuditLogId` correctly stores the **parent `AuditLog` row's Id** (not the entity PK) via a two-pass save: parent audit rows are saved first so their Ids are known, then child rows are saved with `ParentAuditLogId` set. A `_savedAuditIds` dictionary enables cross-`SaveChangesAsync` parent linking within the same request (e.g. page saved in one call, modules saved in a subsequent call inside the same transaction)
+- **Interceptors/AuditInterceptor** — EF Core `SaveChangesInterceptor`; column-wise old/new capture using `AuditConfiguration`; FK values resolved to display names; booleans formatted as "Yes"/"No"; null and IsDeleted=false values skipped. Parent-child audit linking works generically via EF FK metadata (`FindParentEntity`) — no entity types are hardcoded. `BatchId` is scoped to the active DB transaction (all `SaveChangesAsync` calls inside one transaction share the same batch). `ParentAuditLogId` correctly stores the **parent `AuditLog` row's Id** (not the entity PK) via a two-pass save: parent audit rows are saved first so their Ids are known, then child rows are saved with `ParentAuditLogId` set. A `_savedAuditIds` dictionary enables cross-`SaveChangesAsync` parent linking within the same request (e.g. page saved in one call, modules saved in a subsequent call inside the same transaction). `AuditLog.ModifiedBy` is `null` for `Created` actions and populated only for `Updated` / `Deleted`
 - **Extensions/DbInfrastructureExtensions.cs** — registers DbContext, repositories, and `IDapperAuditExecutor`
 
 ### SchoolManagement.Models
@@ -53,7 +53,7 @@ Dependency direction: API → Services → DbInfrastructure → Models
 - **DTOs/** — request and response records per module (`Auth/`, `Master/`)
 - **Mappings/AutoMapperProfile.cs** — single profile with all entity→DTO maps
 - **Common/** — shared types (`ApiResponse<T>`, `PagedResult<T>`, `PaginationRequest`)
-- **Enums/** — `UserRole` (29 values, Ids 1–29 — used only by `RoleSeeder` for fixed seeded IDs)
+- **Enums/** — `UserRole` (29 values, Ids 1–29 — used only by `RoleSeeder` for fixed seeded IDs); `DropdownKey` (8 values: `CountryDDL`…`PageDDL` — decorated with `[JsonConverter(typeof(JsonStringEnumConverter))]` so clients pass `"StateDDL"` not `1`)
 
 ### SchoolManagement.Common
 - **Services/** — `IEncryptionService` (AES-256-GCM + RSA-2048), `IEmailService` (SMTP), `IRequestContext`
@@ -151,7 +151,7 @@ public abstract class BaseEntity
 
 Soft delete is applied via a global query filter: `IsDeleted == false` is appended automatically to all EF Core queries.
 
-`CreatedBy`, `ModifiedBy`, and `DeletedBy` are all stamped in `SchoolManagementDbContext.StampAuditFields()` using `_requestContext.Username` (extracted from the JWT `ClaimTypes.Name` claim). `DeletedBy` is only set when `IsDeleted` transitions to `true` on a `Modified` entry.
+`CreatedBy`, `ModifiedBy`, and `DeletedBy` are all stamped in `SchoolManagementDbContext.StampAuditFields()` using `_requestContext.Username` (extracted from the JWT `ClaimTypes.Name` claim). `ModifiedBy` is set only on `Modified` entries (never on `Added`). `DeletedBy` is only set when `IsDeleted` transitions to `true` on a `Modified` entry. Note: `AuditLog.ModifiedBy` (the audit row itself) is also `null` for `Created` actions — it is populated only for `Updated` / `Deleted` audit entries.
 
 `Role` additionally carries `IsOrgRole` (bool) — `true` for school-scoped roles, `false` for system-level roles (OwnerAdmin, SuperAdmin, Admin).
 

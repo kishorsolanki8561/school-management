@@ -47,6 +47,7 @@ dotnet test --collect:"XPlat Code Coverage"
 | PageMasterService | `Services/PageMasterServiceTests.cs` | Hierarchical create (modules+actions+permissions), default all-action-types, multi-module, HasChild rules, duplicate skip, scalar update, new module upsert, cascade delete, GetAll paged |
 | MenuAndPagePermission | `Services/MenuAndPagePermissionServiceTests.cs` | GetById, GetAll with filters, UpdateAsync flip IsAllowed, NotFound |
 | OrgFileUploadConfigService | `Services/OrgFileUploadConfigServiceTests.cs` | Create, duplicate check, Update, UpdateNotFound, GetById (delegated), GetByScreen (delegated) |
+| DropdownService | `Services/DropdownServiceTests.cs` | Unknown key throws, invalid extra column throws, invalid filter key throws, happy path name+value, extra columns camelCased, filter passed to repo, empty result not null, multiple extra cols, string-key filter (IsOrgRole), SQL contains correct table name |
 | FileUploadService | `Services/FileUploadServiceTests.cs` | OwnerAdmin uses defaults, org config resolves, fallback to defaults, AllowMultiple=false blocks 2 files, invalid extension/size throw, valid upload returns response, folder resolution (OrgName/PageName / PageName / OrgName / AllAttachment) |
 | EncryptionService | `Common/EncryptionServiceTests.cs` | AES-256-GCM encrypt/decrypt, RSA key operations |
 | FilesValidator | `Common/FilesValidatorTests.cs` | File type, size, and extension validation |
@@ -275,6 +276,18 @@ await _context.SaveChangesAsync();
 - Update — throws `KeyNotFoundException` when ID not found
 - GetById — delegates to `IReadRepository`; returns `null` when not found
 - GetByScreen — delegates to `IReadRepository` by `(OrgId, PageId)`; returns `null` when not found
+
+### DropdownService
+- `GetDropdownAsync` — unknown `DropdownKey` value → throws `ArgumentException` containing the key name
+- `GetDropdownAsync` — `ExtraColumns` contains non-whitelisted column → throws `ArgumentException` containing the column name
+- `GetDropdownAsync` — `Filters` contains non-whitelisted key → throws `ArgumentException` containing the key name
+- `GetDropdownAsync` — valid `CountryDDL` with no extras → returns list with `name` and `value` keys
+- `GetDropdownAsync` — extra column `"Code"` → response key is `"code"` (camelCased)
+- `GetDropdownAsync` — `StateDDL` with `CountryId` filter → `QueryDynamicAsync` called with SQL containing `@CountryId`
+- `GetDropdownAsync` — empty rows from repo → returns empty (non-null) enumerable
+- `GetDropdownAsync` — multiple extra columns (`ParentMenuId`, `HasChild`) → all appear camelCased in response
+- `GetDropdownAsync` — `RolesDDL` with `IsOrgRole` filter (whitelisted) → does not throw
+- `GetDropdownAsync` — `PageDDL` → SQL sent to repo contains `[PageMasters]`
 
 ### FileUploadService
 - OwnerAdmin — always uses `appsettings.json` defaults even when org config exists

@@ -538,7 +538,7 @@ Get audit history for a specific record (e.g., all changes to Country with Id 5)
       "action": "Updated",
       "oldData": "{...}",
       "newData": "{...}",
-      "modifiedBy": "user-id",
+      "modifiedBy": "admin",        // null when action = "Created"; username for "Updated" / "Deleted"
       "createdBy": "admin",
       "ipAddress": "192.168.1.1",
       "location": "Localhost",
@@ -703,6 +703,58 @@ Returns `400 Bad Request` if:
 
 ---
 
+## Dropdown Module
+
+All endpoints require auth (`Bearer`).
+
+Generic endpoint that returns dropdown data for any registered key. Always returns `name` / `value` pairs; optional extra columns are appended as camelCase keys.
+
+### POST `/dropdown`
+Fetch dropdown items for the specified key.
+
+**Request**
+```json
+{
+  "key": "StateDDL",
+  "extraColumns": ["CountryId"],
+  "filters": {
+    "CountryId": 3
+  }
+}
+```
+
+> `key` is a **string enum** — case-insensitive. Supported values listed below.
+
+**Supported Keys**
+
+| Key | Source Table | Allowed Extra Columns | Allowed Filter Columns |
+|---|---|---|---|
+| `CountryDDL` | Countries | `Code` | `IsActive` |
+| `StateDDL` | States | `Code`, `CountryId` | `CountryId`, `IsActive` |
+| `CityDDL` | Cities | `StateId` | `StateId`, `IsActive` |
+| `OrganizationDDL` | Organizations | `Address` | `IsActive` |
+| `RolesDDL` | Roles | `Description`, `IsOrgRole` | `IsOrgRole` |
+| `ParentMenuDDL` | MenuMasters (`HasChild=1` only) | `Position`, `IconClass` | `IsActive` |
+| `MenuDDL` | MenuMasters | `ParentMenuId`, `Position`, `IconClass`, `HasChild` | `ParentMenuId`, `IsActive`, `HasChild` |
+| `PageDDL` | PageMasters | `MenuId`, `PageUrl`, `IconClass` | `MenuId`, `IsActive` |
+
+**Response `data`** — `IEnumerable<Dictionary<string, object?>>`
+```json
+[
+  { "name": "Maharashtra", "value": 1, "countryId": 1 },
+  { "name": "Gujarat",     "value": 2, "countryId": 1 }
+]
+```
+
+> Extra column names are always returned **camelCased** (`CountryId` → `countryId`).
+
+Returns `400 Bad Request` if:
+- `key` is not a registered `DropdownKey` value
+- `extraColumns` contains a column not in the whitelist for that key
+- `filters` contains a key not in the whitelist for that key
+
+---
+
 ## Endpoint Summary
 
 | Method | Route | Auth | Description |
@@ -758,3 +810,4 @@ Returns `400 Bad Request` if:
 | GET | `/org-file-upload-config/{id}` | Yes | Get config by ID |
 | GET | `/org-file-upload-config/screen` | Yes | Get config by orgId + pageId |
 | POST | `/file-upload` | Yes | Upload files (multipart/form-data) |
+| POST | `/dropdown` | Yes | Get dropdown data by key |
