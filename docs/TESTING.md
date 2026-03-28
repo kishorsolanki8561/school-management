@@ -321,10 +321,11 @@ await _context.SaveChangesAsync();
 - GetByUser — returns paged result for user id
 - GetByScreen — returns paged result for screen name
 - GetByTable — returns paged result for table name
-- GetByEntityHierarchyAsync — entityId only, no batches found → returns empty paged result
+- GetByEntityHierarchyAsync — entityId only (entityName=null, screenName=null), no batches → returns empty paged result
 - GetByEntityHierarchyAsync — entityId + entityName filter, no batches → returns empty paged result
 - GetByEntityHierarchyAsync — entityId + screenName filter, no batches → returns empty paged result
 - GetByEntityHierarchyAsync — all three filters provided, no batches → returns empty paged result
+- GetByEntityHierarchyAsync — blank/whitespace entityName or screenName normalised to null before SQL params are built
 
 ### OrganizationService
 - Create — returns mapped `OrganizationResponse`

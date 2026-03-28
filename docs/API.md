@@ -643,8 +643,8 @@ Each page item is one DB-transaction batch. Root nodes contain child records
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `entityId` | string | **Yes** | The entity record ID to look up |
-| `entityName` | string | No | Optional: narrow to a specific entity type (e.g. `"Country"`) |
-| `screenName` | string | No | Optional: narrow to entries from a specific screen |
+| `entityName` | string | No | Optional: narrow to a specific entity type (e.g. `"Country"`). Blank or whitespace treated as omitted. |
+| `screenName` | string | No | Optional: narrow to entries from a specific screen. Blank or whitespace treated as omitted. |
 | `page` | int | No | Page number (default `1`) — paging is over **batches**, not individual rows |
 | `pageSize` | int | No | Batches per page (default `20`) |
 
