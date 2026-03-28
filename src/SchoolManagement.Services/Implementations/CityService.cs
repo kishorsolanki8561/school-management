@@ -7,6 +7,7 @@ using SchoolManagement.Models.DTOs.Master;
 using SchoolManagement.Models.Entities;
 using SchoolManagement.Common.Constants;
 using SchoolManagement.Services.Constants;
+using SchoolManagement.Services.Helpers;
 using SchoolManagement.Services.Interfaces;
 
 namespace SchoolManagement.Services.Implementations;
@@ -90,33 +91,42 @@ public sealed class CityService : ICityService
     {
         var param = new
         {
-            Search = pagination.Search,
+            Search   = pagination.Search,
+            IsActive = pagination.Status,
+            DateFrom = pagination.DateFrom,
+            DateTo   = pagination.DateTo,
             pagination.PageSize,
-            Offset = pagination.Offset,
+            Offset   = pagination.Offset,
         };
 
-        return await _readRepo.QueryPagedAsync<CityResponse>(
+        var dataSql = QueryBuilder.AppendPaging(
             CityQueries.GetAll,
-            CityQueries.CountAll,
-            param,
-            pagination.Page,
-            pagination.PageSize);
+            pagination.SortBy, pagination.SortDescending,
+            CityQueries.AllowedSortColumns, CityQueries.DefaultSortColumn);
+
+        return await _readRepo.QueryPagedAsync<CityResponse>(
+            dataSql, CityQueries.CountAll, param, pagination.Page, pagination.PageSize);
     }
 
     public async Task<PagedResult<CityResponse>> GetByStateAsync(int stateId, PaginationRequest pagination, CancellationToken cancellationToken = default)
     {
         var param = new
         {
-            StateId = stateId,
+            StateId  = stateId,
+            Search   = pagination.Search,
+            IsActive = pagination.Status,
+            DateFrom = pagination.DateFrom,
+            DateTo   = pagination.DateTo,
             pagination.PageSize,
-            Offset = pagination.Offset,
+            Offset   = pagination.Offset,
         };
 
-        return await _readRepo.QueryPagedAsync<CityResponse>(
+        var dataSql = QueryBuilder.AppendPaging(
             CityQueries.GetByState,
-            CityQueries.CountByState,
-            param,
-            pagination.Page,
-            pagination.PageSize);
+            pagination.SortBy, pagination.SortDescending,
+            CityQueries.AllowedSortColumns, CityQueries.DefaultSortColumn);
+
+        return await _readRepo.QueryPagedAsync<CityResponse>(
+            dataSql, CityQueries.CountByState, param, pagination.Page, pagination.PageSize);
     }
 }

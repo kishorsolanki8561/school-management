@@ -43,6 +43,7 @@ dotnet test --collect:"XPlat Code Coverage"
 | AuthService | `Services/AuthServiceTests.cs` | Login, register, refresh token, logout, forgot/reset password, multi-role + org assignment |
 | AuditLogService | `Services/AuditLogServiceTests.cs` | GetByEntity, GetByUser, GetByScreen, GetByTable |
 | DapperAuditExecutor | `Services/DapperAuditExecutorTests.cs` | Skip on null context / zero rows / unconfigured table; Created saves NewData; Updated saves only changed columns; no-op when nothing changed; bool → Yes/No; null columns excluded; request context stamped |
+| QueryBuilder | `Services/QueryBuilderTests.cs` | Default sort, defaultSortDescending, valid column, sortDescending, invalid/injection fallback, unknown column, case-insensitive match, base SQL preserved, pagination clause appended |
 | MenuMasterService | `Services/MenuMasterServiceTests.cs` | Create, Update, Delete, GetById, GetAll, cascade soft-delete (pages/modules/actions/permissions) |
 | PageMasterService | `Services/PageMasterServiceTests.cs` | Hierarchical create (modules+actions+permissions), default all-action-types, multi-module, HasChild rules, duplicate skip, scalar update, new module upsert, cascade delete, GetAll paged |
 | MenuAndPagePermission | `Services/MenuAndPagePermissionServiceTests.cs` | GetById, GetAll with filters, UpdateAsync flip IsAllowed, NotFound |
@@ -303,6 +304,17 @@ await _context.SaveChangesAsync();
 - Folder = `{PageName}` when orgId is null
 - Folder = `{OrgName}` when pageId is null
 - Folder = `AllAttachment` when both orgId and pageId are null
+
+### QueryBuilder
+- `AppendPaging` — null `sortBy` → uses `defaultColumn ASC`
+- `AppendPaging` — null `sortBy` + `defaultSortDescending: true` → uses `defaultColumn DESC`
+- `AppendPaging` — valid `sortBy` → uses that column with specified direction
+- `AppendPaging` — valid `sortBy` + `sortDescending: true` → appends `DESC`
+- `AppendPaging` — SQL-injection attempt in `sortBy` → falls back to default (injection string not present in output)
+- `AppendPaging` — unknown column name → falls back to default column
+- `AppendPaging` — `sortBy` matching allowed column case-insensitively → uses the whitelisted value
+- `AppendPaging` — base SQL is preserved unchanged at the start of the result
+- `AppendPaging` — always appends `OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY`
 
 ### AuditLogService
 - GetByEntity — returns paged result for entity name + id

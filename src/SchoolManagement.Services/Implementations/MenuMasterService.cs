@@ -7,6 +7,7 @@ using SchoolManagement.Models.Common;
 using SchoolManagement.Models.DTOs.Master;
 using SchoolManagement.Models.Entities;
 using SchoolManagement.Services.Constants;
+using SchoolManagement.Services.Helpers;
 using SchoolManagement.Services.Interfaces;
 
 namespace SchoolManagement.Services.Implementations;
@@ -114,12 +115,25 @@ public sealed class MenuMasterService : IMenuMasterService
         => _readRepo.QueryFirstOrDefaultAsync<MenuResponse>(MenuMasterQueries.GetById, new { Id = id });
 
     public async Task<PagedResult<MenuResponse>> GetAllAsync(PaginationRequest request, CancellationToken cancellationToken = default)
-        => await _readRepo.QueryPagedAsync<MenuResponse>(
+    {
+        var param = new
+        {
+            Search   = request.Search,
+            IsActive = request.Status,
+            DateFrom = request.DateFrom,
+            DateTo   = request.DateTo,
+            Offset   = request.Offset,
+            request.PageSize,
+        };
+
+        var dataSql = QueryBuilder.AppendPaging(
             MenuMasterQueries.GetAll,
-            MenuMasterQueries.CountAll,
-            new { Search = string.IsNullOrWhiteSpace(request.Search) ? null : request.Search, Offset = (request.Page - 1) * request.PageSize, request.PageSize },
-            request.Page,
-            request.PageSize);
+            request.SortBy, request.SortDescending,
+            MenuMasterQueries.AllowedSortColumns, MenuMasterQueries.DefaultSortColumn);
+
+        return await _readRepo.QueryPagedAsync<MenuResponse>(
+            dataSql, MenuMasterQueries.CountAll, param, request.Page, request.PageSize);
+    }
 
     /// <summary>
     /// Returns breadcrumb object for the given menu <paramref name="id"/>.

@@ -5,6 +5,7 @@ using SchoolManagement.DbInfrastructure.Repositories.Interfaces;
 using SchoolManagement.Models.Common;
 using SchoolManagement.Models.DTOs.Master;
 using SchoolManagement.Services.Constants;
+using SchoolManagement.Services.Helpers;
 using SchoolManagement.Services.Interfaces;
 
 namespace SchoolManagement.Services.Implementations;
@@ -52,10 +53,25 @@ public sealed class MenuAndPagePermissionService : IMenuAndPagePermissionService
         int? pageId = null,
         int? roleId = null,
         CancellationToken ct = default)
-        => await _readRepo.QueryPagedAsync<MenuAndPagePermissionResponse>(
-               MenuAndPagePermissionQueries.GetAll,
-               MenuAndPagePermissionQueries.CountAll,
-               new { MenuId = menuId, PageId = pageId, RoleId = roleId, Offset = (request.Page - 1) * request.PageSize, request.PageSize },
-               request.Page,
-               request.PageSize);
+    {
+        var param = new
+        {
+            MenuId   = menuId,
+            PageId   = pageId,
+            RoleId   = roleId,
+            DateFrom = request.DateFrom,
+            DateTo   = request.DateTo,
+            Offset   = request.Offset,
+            request.PageSize,
+        };
+
+        var dataSql = QueryBuilder.AppendPaging(
+            MenuAndPagePermissionQueries.GetAll,
+            request.SortBy, request.SortDescending,
+            MenuAndPagePermissionQueries.AllowedSortColumns,
+            MenuAndPagePermissionQueries.DefaultSortColumn);
+
+        return await _readRepo.QueryPagedAsync<MenuAndPagePermissionResponse>(
+            dataSql, MenuAndPagePermissionQueries.CountAll, param, request.Page, request.PageSize);
+    }
 }

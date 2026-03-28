@@ -34,6 +34,7 @@ Dependency direction: API → Services → DbInfrastructure → Models
 - **Interfaces/** — service contracts (`IAuthService`, `ICountryService`, `IStateService`, `ICityService`, `IAuditLogService`, `IOrganizationService`, `IMenuMasterService`, `IPageMasterService`, `IMenuAndPagePermissionService`, `IOrgFileUploadConfigService`, `IFileUploadService`, `IDropdownService`)
 - **Implementations/** — business logic classes
 - **Constants/** — raw Dapper SQL queries per domain (`CountryQueries`, `StateQueries`, `CityQueries`, `AuditLogQueries`, `AuthQueries`, `OrganizationQueries`, `MenuMasterQueries`, `PageMasterQueries`, `MenuAndPagePermissionQueries`); `DropdownRegistry` (internal whitelist mapping each `DropdownKey` to its table, columns, and allowed extra/filter columns — prevents SQL injection from client column names)
+- **Helpers/** — `QueryBuilder` (internal: safely appends `ORDER BY {whitelisted-col} {ASC|DESC}` + `OFFSET/FETCH` pagination clause to base SQL strings; falls back to the entity's default sort column when client-supplied `sortBy` is not in the whitelist)
 - **Extensions/ServicesExtensions.cs** — registers all services as `Scoped`
 
 ### SchoolManagement.DbInfrastructure

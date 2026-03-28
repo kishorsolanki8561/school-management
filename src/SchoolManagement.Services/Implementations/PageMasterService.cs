@@ -8,6 +8,7 @@ using SchoolManagement.Models.DTOs.Master;
 using SchoolManagement.Models.Entities;
 using SchoolManagement.Models.Enums;
 using SchoolManagement.Services.Constants;
+using SchoolManagement.Services.Helpers;
 using SchoolManagement.Services.Interfaces;
 
 namespace SchoolManagement.Services.Implementations;
@@ -176,12 +177,26 @@ public sealed class PageMasterService : IPageMasterService
         => _readRepo.QueryFirstOrDefaultAsync<PageResponse>(PageMasterQueries.GetPageById, new { Id = id });
 
     public async Task<PagedResult<PageResponse>> GetAllPagesAsync(PaginationRequest request, int? menuId = null, CancellationToken ct = default)
-        => await _readRepo.QueryPagedAsync<PageResponse>(
+    {
+        var param = new
+        {
+            MenuId   = menuId,
+            Search   = request.Search,
+            IsActive = request.Status,
+            DateFrom = request.DateFrom,
+            DateTo   = request.DateTo,
+            Offset   = request.Offset,
+            request.PageSize,
+        };
+
+        var dataSql = QueryBuilder.AppendPaging(
             PageMasterQueries.GetAllPages,
-            PageMasterQueries.CountAllPages,
-            new { MenuId = menuId, Search = string.IsNullOrWhiteSpace(request.Search) ? null : request.Search, Offset = (request.Page - 1) * request.PageSize, request.PageSize },
-            request.Page,
-            request.PageSize);
+            request.SortBy, request.SortDescending,
+            PageMasterQueries.AllowedSortColumns, PageMasterQueries.DefaultSortColumn);
+
+        return await _readRepo.QueryPagedAsync<PageResponse>(
+            dataSql, PageMasterQueries.CountAllPages, param, request.Page, request.PageSize);
+    }
 
     // ── Private helpers ───────────────────────────────────────────────────────
 

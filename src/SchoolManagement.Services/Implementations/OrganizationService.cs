@@ -7,6 +7,7 @@ using SchoolManagement.Models.Common;
 using SchoolManagement.Models.DTOs.Master;
 using SchoolManagement.Models.Entities;
 using SchoolManagement.Services.Constants;
+using SchoolManagement.Services.Helpers;
 using SchoolManagement.Services.Interfaces;
 
 namespace SchoolManagement.Services.Implementations;
@@ -80,13 +81,21 @@ public sealed class OrganizationService : IOrganizationService
     {
         var param = new
         {
-            Search = pagination.Search,
+            Search   = pagination.Search,
+            IsActive = pagination.Status,
+            DateFrom = pagination.DateFrom,
+            DateTo   = pagination.DateTo,
             pagination.PageSize,
-            Offset = pagination.Offset,
+            Offset   = pagination.Offset,
         };
 
-        return await _readRepo.QueryPagedAsync<OrganizationResponse>(
+        var dataSql = QueryBuilder.AppendPaging(
             OrganizationQueries.GetAll,
+            pagination.SortBy, pagination.SortDescending,
+            OrganizationQueries.AllowedSortColumns, OrganizationQueries.DefaultSortColumn);
+
+        return await _readRepo.QueryPagedAsync<OrganizationResponse>(
+            dataSql,
             OrganizationQueries.CountAll,
             param,
             pagination.Page,

@@ -12,13 +12,20 @@ internal static class MenuMasterQueries
         SELECT Id, Name, HasChild, ParentMenuId, Position, IconClass, IsActive, IsUseMenuForOwnerAdmin, CreatedAt
         FROM   MenuMasters
         WHERE  IsDeleted = 0
-          AND  (@Search IS NULL OR Name LIKE '%' + @Search + '%')
-        ORDER  BY Position, Name
-        OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY";
+          AND  (@Search   IS NULL OR Name LIKE '%' + @Search + '%')
+          AND  (@IsActive IS NULL OR IsActive  = @IsActive)
+          AND  (@DateFrom IS NULL OR CreatedAt >= @DateFrom)
+          AND  (@DateTo   IS NULL OR CreatedAt <= @DateTo)";
 
     public const string CountAll = @"
         SELECT COUNT(*)
         FROM   MenuMasters
         WHERE  IsDeleted = 0
-          AND  (@Search IS NULL OR Name LIKE '%' + @Search + '%')";
+          AND  (@Search   IS NULL OR Name LIKE '%' + @Search + '%')
+          AND  (@IsActive IS NULL OR IsActive  = @IsActive)
+          AND  (@DateFrom IS NULL OR CreatedAt >= @DateFrom)
+          AND  (@DateTo   IS NULL OR CreatedAt <= @DateTo)";
+
+    public static readonly string[] AllowedSortColumns = { "Id", "Name", "Position", "IsActive", "CreatedAt" };
+    public const string DefaultSortColumn = "Position";
 }

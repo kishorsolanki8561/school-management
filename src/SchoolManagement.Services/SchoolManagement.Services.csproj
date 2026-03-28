@@ -10,4 +10,9 @@
     <ProjectReference Include="..\SchoolManagement.Common\SchoolManagement.Common.csproj" />
     <ProjectReference Include="..\SchoolManagement.DbInfrastructure\SchoolManagement.DbInfrastructure.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>SchoolManagement.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
 </Project>

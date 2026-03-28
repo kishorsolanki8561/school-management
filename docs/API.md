@@ -53,6 +53,25 @@ The value is stored in `AuditLogs.ScreenName`. If omitted the field is stored as
 
 ---
 
+## Pagination Parameters
+
+All `GET` list endpoints accept these standard query parameters via `[FromQuery] PaginationRequest`:
+
+| Param | Type | Default | Description |
+|---|---|---|---|
+| `page` | int | `1` | Page number (1-based) |
+| `pageSize` | int | `20` | Items per page |
+| `search` | string | — | Free-text search across name/code columns |
+| `sortBy` | string | *(entity default)* | Column to sort by — whitelisted per endpoint; unrecognised values fall back to the entity default |
+| `sortDescending` | bool | `false` | Sort direction: `true` = DESC, `false` = ASC |
+| `status` | int | — | `1` = active records only, `0` = inactive only; omit for all. Not applicable to AuditLog or MenuAndPagePermission. |
+| `dateFrom` | datetime | — | Inclusive lower bound on `CreatedAt` (or `Timestamp` for AuditLog) |
+| `dateTo` | datetime | — | Inclusive upper bound on `CreatedAt` (or `Timestamp` for AuditLog) |
+
+> `sortBy` column names are validated against a per-entity whitelist in `DropdownRegistry`/`*Queries.cs` — client-supplied column names are **never** injected into SQL directly.
+
+---
+
 ## Auth Module
 
 ### POST `/auth/login`
@@ -211,8 +230,13 @@ Get paginated list of countries.
 | Param | Type | Default | Description |
 |---|---|---|---|
 | `page` | int | 1 | Page number |
-| `pageSize` | int | 10 | Items per page |
-| `search` | string | — | Filter by name or code |
+| `pageSize` | int | 20 | Items per page |
+| `search` | string | — | Free-text search (Name, Code where applicable) |
+| `sortBy` | string | `Name` | Column to sort by. Allowed: `Id`, `Name`, `Code`, `IsActive`, `CreatedAt`. Falls back to default if unrecognised. |
+| `sortDescending` | bool | `false` | `true` = DESC, `false` = ASC |
+| `status` | int | — | `1` = active only, `0` = inactive only, omit = all |
+| `dateFrom` | datetime | — | Filter records where `CreatedAt >= dateFrom` |
+| `dateTo` | datetime | — | Filter records where `CreatedAt <= dateTo` |
 
 ---
 
@@ -274,7 +298,8 @@ Get a state by ID.
 ### GET `/state`
 Get paginated list of states.
 
-**Query Parameters** — same as `/country`.
+**Query Parameters** — same as `/country` (`page`, `pageSize`, `search`, `sortBy`, `sortDescending`, `status`, `dateFrom`, `dateTo`).
+Allowed `sortBy` values: `s.Id`, `s.Name`, `s.Code`, `s.IsActive`, `s.CreatedAt`. Default: `s.Name`.
 
 ---
 
@@ -340,7 +365,7 @@ Get a city by ID.
 ### GET `/city`
 Get paginated list of cities.
 
-**Query Parameters** — same as `/country`.
+**Query Parameters** — same as `/country`. Allowed `sortBy` values: `ci.Id`, `ci.Name`, `ci.IsActive`, `ci.CreatedAt`. Default: `ci.Name`.
 
 ---
 
@@ -404,7 +429,9 @@ Get an organization by ID.
 ---
 
 ### GET `/organization`
-Get paginated list of organizations. Query params: `page`, `pageSize`, `search`.
+Get paginated list of organizations.
+
+**Query Parameters** — same as `/country`. Allowed `sortBy` values: `Id`, `Name`, `Address`, `IsActive`, `CreatedAt`. Default: `Name`.
 
 ---
 
@@ -445,7 +472,9 @@ Get a menu by ID.
 ---
 
 ### GET `/menu-master`
-Get paginated list of menus. Query params: `page`, `pageSize`, `search`.
+Get paginated list of menus.
+
+Query params: `page`, `pageSize`, `search`, `sortBy` (allowed: `Id`, `Name`, `Position`, `IsActive`, `CreatedAt`; default `Position`), `sortDescending`, `status`, `dateFrom`, `dateTo`.
 
 ---
 
@@ -493,7 +522,9 @@ Get a page by ID.
 ---
 
 ### GET `/page-master`
-Get paginated list of pages. Query params: `page`, `pageSize`, `menuId` (optional filter).
+Get paginated list of pages.
+
+Query params: `page`, `pageSize`, `menuId` (optional, filter by menu), `search`, `sortBy` (allowed: `Id`, `Name`, `PageUrl`, `IsActive`, `CreatedAt`, `MenuId`; default `Name`), `sortDescending`, `status`, `dateFrom`, `dateTo`.
 
 ---
 
@@ -507,7 +538,9 @@ Get a single permission record by ID.
 ---
 
 ### GET `/menu-and-page-permission`
-Get paginated list of permissions. Query params: `page`, `pageSize`, `roleId`, `menuId`, `pageId`.
+Get paginated list of permissions.
+
+Query params: `page`, `pageSize`, `roleId`, `menuId`, `pageId`, `sortBy` (allowed: `Id`, `MenuId`, `PageId`, `RoleId`, `ActionId`, `IsAllowed`, `CreatedAt`; default `MenuId`), `sortDescending`, `dateFrom`, `dateTo`. (`status` not applicable — no `IsActive` column.)
 
 ---
 
@@ -525,7 +558,7 @@ All endpoints require auth (`Bearer`). Returns paginated `AuditLog` records.
 ### GET `/audit-log/entity/{entityName}/{entityId}`
 Get audit history for a specific record (e.g., all changes to Country with Id 5).
 
-**Query Parameters** — same paging params as `/country` (`page`, `pageSize`, `search`).
+**Query Parameters** — `page`, `pageSize`, `dateFrom`, `dateTo`, `sortBy` (allowed: `Id`, `Timestamp`, `Action`, `EntityName`, `TableName`, `ScreenName`, `CreatedBy`; default `Timestamp`), `sortDescending` (default `true` when using default sort). (`status` and `search` not applicable.)
 
 **Response `data`** — `PagedResult<AuditLog>`
 ```json
@@ -561,7 +594,7 @@ Get audit history for a specific record (e.g., all changes to Country with Id 5)
 ### GET `/audit-log/user/{userId}`
 Get all audit entries created by a specific user.
 
-**Query Parameters** — `page`, `pageSize`.
+**Query Parameters** — `page`, `pageSize`, `dateFrom`, `dateTo`, `sortBy`, `sortDescending`.
 
 ---
 
@@ -570,7 +603,7 @@ Get all audit entries triggered from a specific screen (matched against `ScreenN
 
 **Example:** `/audit-log/screen/Country%20Management`
 
-**Query Parameters** — `page`, `pageSize`.
+**Query Parameters** — `page`, `pageSize`, `dateFrom`, `dateTo`, `sortBy`, `sortDescending`.
 
 ---
 
@@ -579,7 +612,7 @@ Get all audit entries for a specific DB table (matched against `TableName` colum
 
 **Example:** `/audit-log/table/Countries`
 
-**Query Parameters** — `page`, `pageSize`.
+**Query Parameters** — `page`, `pageSize`, `dateFrom`, `dateTo`, `sortBy`, `sortDescending`.
 
 ---
 

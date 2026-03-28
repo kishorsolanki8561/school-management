@@ -12,17 +12,22 @@ internal static class MenuAndPagePermissionQueries
         SELECT Id, MenuId, PageId, PageModuleId, ActionId, RoleId, IsAllowed, CreatedAt
         FROM   MenuAndPagePermissions
         WHERE  IsDeleted = 0
-          AND  (@MenuId IS NULL OR MenuId = @MenuId)
-          AND  (@PageId IS NULL OR PageId = @PageId)
-          AND  (@RoleId IS NULL OR RoleId = @RoleId)
-        ORDER  BY MenuId, PageId, PageModuleId, ActionId, RoleId
-        OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY";
+          AND  (@MenuId   IS NULL OR MenuId = @MenuId)
+          AND  (@PageId   IS NULL OR PageId = @PageId)
+          AND  (@RoleId   IS NULL OR RoleId = @RoleId)
+          AND  (@DateFrom IS NULL OR CreatedAt >= @DateFrom)
+          AND  (@DateTo   IS NULL OR CreatedAt <= @DateTo)";
 
     public const string CountAll = @"
         SELECT COUNT(*)
         FROM   MenuAndPagePermissions
         WHERE  IsDeleted = 0
-          AND  (@MenuId IS NULL OR MenuId = @MenuId)
-          AND  (@PageId IS NULL OR PageId = @PageId)
-          AND  (@RoleId IS NULL OR RoleId = @RoleId)";
+          AND  (@MenuId   IS NULL OR MenuId = @MenuId)
+          AND  (@PageId   IS NULL OR PageId = @PageId)
+          AND  (@RoleId   IS NULL OR RoleId = @RoleId)
+          AND  (@DateFrom IS NULL OR CreatedAt >= @DateFrom)
+          AND  (@DateTo   IS NULL OR CreatedAt <= @DateTo)";
+
+    public static readonly string[] AllowedSortColumns = { "Id", "MenuId", "PageId", "RoleId", "ActionId", "IsAllowed", "CreatedAt" };
+    public const string DefaultSortColumn = "MenuId";
 }

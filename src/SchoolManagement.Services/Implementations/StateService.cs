@@ -7,6 +7,7 @@ using SchoolManagement.Models.DTOs.Master;
 using SchoolManagement.Models.Entities;
 using SchoolManagement.Common.Constants;
 using SchoolManagement.Services.Constants;
+using SchoolManagement.Services.Helpers;
 using SchoolManagement.Services.Interfaces;
 
 namespace SchoolManagement.Services.Implementations;
@@ -91,17 +92,21 @@ public sealed class StateService : IStateService
     {
         var param = new
         {
-            Search = pagination.Search,
+            Search   = pagination.Search,
+            IsActive = pagination.Status,
+            DateFrom = pagination.DateFrom,
+            DateTo   = pagination.DateTo,
             pagination.PageSize,
-            Offset = pagination.Offset,
+            Offset   = pagination.Offset,
         };
 
-        return await _readRepo.QueryPagedAsync<StateResponse>(
+        var dataSql = QueryBuilder.AppendPaging(
             StateQueries.GetAll,
-            StateQueries.CountAll,
-            param,
-            pagination.Page,
-            pagination.PageSize);
+            pagination.SortBy, pagination.SortDescending,
+            StateQueries.AllowedSortColumns, StateQueries.DefaultSortColumn);
+
+        return await _readRepo.QueryPagedAsync<StateResponse>(
+            dataSql, StateQueries.CountAll, param, pagination.Page, pagination.PageSize);
     }
 
     public async Task<PagedResult<StateResponse>> GetByCountryAsync(int countryId, PaginationRequest pagination, CancellationToken cancellationToken = default)
@@ -109,15 +114,20 @@ public sealed class StateService : IStateService
         var param = new
         {
             CountryId = countryId,
+            Search    = pagination.Search,
+            IsActive  = pagination.Status,
+            DateFrom  = pagination.DateFrom,
+            DateTo    = pagination.DateTo,
             pagination.PageSize,
-            Offset = pagination.Offset,
+            Offset    = pagination.Offset,
         };
 
-        return await _readRepo.QueryPagedAsync<StateResponse>(
+        var dataSql = QueryBuilder.AppendPaging(
             StateQueries.GetByCountry,
-            StateQueries.CountByCountry,
-            param,
-            pagination.Page,
-            pagination.PageSize);
+            pagination.SortBy, pagination.SortDescending,
+            StateQueries.AllowedSortColumns, StateQueries.DefaultSortColumn);
+
+        return await _readRepo.QueryPagedAsync<StateResponse>(
+            dataSql, StateQueries.CountByCountry, param, pagination.Page, pagination.PageSize);
     }
 }

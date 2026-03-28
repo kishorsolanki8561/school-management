@@ -7,6 +7,7 @@ using SchoolManagement.Models.DTOs.Master;
 using SchoolManagement.Models.Entities;
 using SchoolManagement.Common.Constants;
 using SchoolManagement.Services.Constants;
+using SchoolManagement.Services.Helpers;
 using SchoolManagement.Services.Interfaces;
 
 namespace SchoolManagement.Services.Implementations;
@@ -80,13 +81,21 @@ public sealed class CountryService : ICountryService
     {
         var param = new
         {
-            Search = pagination.Search,
+            Search   = pagination.Search,
+            IsActive = pagination.Status,
+            DateFrom = pagination.DateFrom,
+            DateTo   = pagination.DateTo,
             pagination.PageSize,
-            Offset = pagination.Offset,
+            Offset   = pagination.Offset,
         };
 
-        return await _readRepo.QueryPagedAsync<CountryResponse>(
+        var dataSql = QueryBuilder.AppendPaging(
             CountryQueries.GetAll,
+            pagination.SortBy, pagination.SortDescending,
+            CountryQueries.AllowedSortColumns, CountryQueries.DefaultSortColumn);
+
+        return await _readRepo.QueryPagedAsync<CountryResponse>(
+            dataSql,
             CountryQueries.CountAll,
             param,
             pagination.Page,

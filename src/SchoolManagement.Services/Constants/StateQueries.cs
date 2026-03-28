@@ -13,26 +13,39 @@ internal static class StateQueries
         FROM States s
         INNER JOIN Countries c ON c.Id = s.CountryId
         WHERE s.IsDeleted = 0
-          AND (@Search IS NULL OR s.Name LIKE '%' + @Search + '%' OR s.Code LIKE '%' + @Search + '%')
-        ORDER BY s.Name
-        OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY";
+          AND (@Search   IS NULL OR s.Name LIKE '%' + @Search + '%' OR s.Code LIKE '%' + @Search + '%')
+          AND (@IsActive IS NULL OR s.IsActive  = @IsActive)
+          AND (@DateFrom IS NULL OR s.CreatedAt >= @DateFrom)
+          AND (@DateTo   IS NULL OR s.CreatedAt <= @DateTo)";
 
     public const string CountAll = @"
         SELECT COUNT(*)
         FROM States s
         WHERE s.IsDeleted = 0
-          AND (@Search IS NULL OR s.Name LIKE '%' + @Search + '%' OR s.Code LIKE '%' + @Search + '%')";
+          AND (@Search   IS NULL OR s.Name LIKE '%' + @Search + '%' OR s.Code LIKE '%' + @Search + '%')
+          AND (@IsActive IS NULL OR s.IsActive  = @IsActive)
+          AND (@DateFrom IS NULL OR s.CreatedAt >= @DateFrom)
+          AND (@DateTo   IS NULL OR s.CreatedAt <= @DateTo)";
 
     public const string GetByCountry = @"
         SELECT s.Id, s.Name, s.Code, s.CountryId, c.Name AS CountryName, s.IsActive, s.CreatedAt
         FROM States s
         INNER JOIN Countries c ON c.Id = s.CountryId
         WHERE s.CountryId = @CountryId AND s.IsDeleted = 0
-        ORDER BY s.Name
-        OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY";
+          AND (@Search   IS NULL OR s.Name LIKE '%' + @Search + '%' OR s.Code LIKE '%' + @Search + '%')
+          AND (@IsActive IS NULL OR s.IsActive  = @IsActive)
+          AND (@DateFrom IS NULL OR s.CreatedAt >= @DateFrom)
+          AND (@DateTo   IS NULL OR s.CreatedAt <= @DateTo)";
 
     public const string CountByCountry = @"
         SELECT COUNT(*)
-        FROM States
-        WHERE CountryId = @CountryId AND IsDeleted = 0";
+        FROM States s
+        WHERE s.CountryId = @CountryId AND s.IsDeleted = 0
+          AND (@Search   IS NULL OR s.Name LIKE '%' + @Search + '%' OR s.Code LIKE '%' + @Search + '%')
+          AND (@IsActive IS NULL OR s.IsActive  = @IsActive)
+          AND (@DateFrom IS NULL OR s.CreatedAt >= @DateFrom)
+          AND (@DateTo   IS NULL OR s.CreatedAt <= @DateTo)";
+
+    public static readonly string[] AllowedSortColumns = { "s.Id", "s.Name", "s.Code", "s.IsActive", "s.CreatedAt" };
+    public const string DefaultSortColumn = "s.Name";
 }
