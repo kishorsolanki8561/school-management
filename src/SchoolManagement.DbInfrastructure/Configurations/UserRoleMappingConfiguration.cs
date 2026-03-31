@@ -20,6 +20,13 @@ internal sealed class UserRoleMappingConfiguration : IEntityTypeConfiguration<Us
                .HasForeignKey(urm => urm.RoleId)
                .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(urm => new { urm.UserId, urm.RoleId }).IsUnique();
+        builder.HasOne(urm => urm.Organization)
+               .WithMany()
+               .HasForeignKey(urm => urm.OrgId)
+               .OnDelete(DeleteBehavior.Restrict)
+               .IsRequired(false);
+
+        // Unique per user+role+org combination (OrgId nullable → allows system-level + org-level)
+        builder.HasIndex(urm => new { urm.UserId, urm.RoleId, urm.OrgId }).IsUnique();
     }
 }

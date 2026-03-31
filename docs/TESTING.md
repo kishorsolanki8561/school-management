@@ -340,7 +340,7 @@ await _context.SaveChangesAsync();
 ### AuthService
 - Register — creates user with hashed password; `roleIds` (list) creates one `UserRoleMapping` per role; `orgIds` (list) creates one `UserOrganizationMapping` per org
 - Register — throws on duplicate username/email
-- Login — returns access + refresh token on valid credentials; `role` field in response is the first assigned role name (empty string if none)
+- Login — returns access + refresh token on valid credentials; `role` field in response is the first assigned role name (empty string if none); `OrgId`/`OrgName` populated for non-OwnerAdmin users
 - Login — throws on wrong password
 - Refresh — rotates tokens on valid refresh token
 - Refresh — throws on expired/revoked token
@@ -348,6 +348,33 @@ await _context.SaveChangesAsync();
 - ForgotPassword — sends reset email
 - ResetPassword — changes password and marks token used
 - ResetPassword — throws on expired token
+- SwitchSchool — returns new token pair with updated OrgId claim
+- SwitchSchool — throws Unauthorized when user is not a member of target org
+
+### SchoolService
+- RegisterAsync — creates Organization + SchoolApprovalRequest (Pending)
+- RegisterAsync — throws on duplicate school name
+- ApproveAsync — sets IsApproved=true, stamps ApprovedAt/ApprovedBy, updates approval request to Approved
+- ApproveAsync — throws when school is already approved
+- RejectAsync — sets approval request to Rejected with reason
+- RejectAsync — throws when no pending request exists
+- GetPendingApprovalsAsync — returns only Pending requests paginated
+- GetApprovalHistoryAsync — returns all requests for a specific school
+
+### UserManagementService
+- CreateAsync — creates user with hashed password, assigns roles scoped to caller's OrgId
+- CreateAsync — throws on duplicate username/email
+- CreateAsync — throws when a supplied roleId does not exist
+- UpdateAsync — updates Username, Email, IsActive
+- UpdateAsync — throws when user not found
+- DeleteAsync — sets IsDeleted=true
+- AssignRoleAsync — adds UserRoleMapping scoped to caller's OrgId
+- AssignRoleAsync — throws when role already assigned in org
+- RemoveRoleAsync — soft-deletes the UserRoleMapping
+- RemoveRoleAsync — throws when assignment not found
+- ChangeRoleLevelAsync — swaps system-level role between SuperAdmin and Admin (OrgId=null)
+- ChangeRoleLevelAsync — throws when target role is not SuperAdmin or Admin
+- ChangeRoleLevelAsync — throws when target user is OwnerAdmin
 
 ---
 

@@ -1,6 +1,8 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SchoolManagement.Models.Common;
+using SchoolManagement.Models.DTOs;
 using SchoolManagement.Models.DTOs.Auth;
 using SchoolManagement.Services.Interfaces;
 using Swashbuckle.AspNetCore.Annotations;
@@ -88,5 +90,21 @@ public sealed class AuthController : ControllerBase
     {
         await _authService.ResetPasswordAsync(request, cancellationToken);
         return Ok(ApiResponse<string>.Ok(SchoolManagement.Common.Constants.AppMessages.Auth.PasswordResetSuccess, HttpContext.TraceIdentifier));
+    }
+
+    /// <summary>Switch the caller's active school context and receive a fresh token pair.</summary>
+    [HttpPost("switch-school")]
+    [Authorize]
+    [SwaggerOperation(Summary = "Switch School", Tags = new[] { "Auth" })]
+    [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> SwitchSchool([FromBody] SwitchSchoolRequest request, CancellationToken cancellationToken)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                          ?? throw new UnauthorizedAccessException();
+
+        var userId = int.Parse(userIdClaim);
+        var result = await _authService.SwitchSchoolAsync(userId, request.OrgId, cancellationToken);
+        return Ok(ApiResponse<LoginResponse>.Ok(result, HttpContext.TraceIdentifier));
     }
 }

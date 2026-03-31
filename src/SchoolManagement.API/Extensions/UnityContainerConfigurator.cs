@@ -1,8 +1,8 @@
 using Unity;
 using Unity.Microsoft.DependencyInjection;
 using SchoolManagement.Common.Services;
-using SchoolManagement.DbInfrastructure.Repositories.Interfaces;
 using SchoolManagement.DbInfrastructure.Repositories.Implementations;
+using SchoolManagement.DbInfrastructure.Repositories.Interfaces;
 using SchoolManagement.Services.Implementations;
 using SchoolManagement.Services.Interfaces;
 
@@ -15,6 +15,8 @@ public static class UnityContainerConfigurator
         // Services
         container.RegisterType<IAuthService, AuthService>();
         container.RegisterType<IAuditLogService, AuditLogService>();
+        container.RegisterType<ISchoolService, SchoolService>();
+        container.RegisterType<IUserManagementService, UserManagementService>();
 
         // Common Services
         container.RegisterType<IEncryptionService, EncryptionService>();

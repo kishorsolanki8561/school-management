@@ -861,6 +861,87 @@ Returns `400 Bad Request` if:
 
 ---
 
+## School Management
+
+### POST `/school/register`
+Registers a new school. Creates an `Organization` record (inactive, unapproved) and a `SchoolApprovalRequest` (Pending).
+
+**Request body**
+```json
+{ "name": "Sunrise Academy", "address": "123 Main St" }
+```
+
+### PUT `/school/{id}/approve`
+OwnerAdmin approves the school. Sets `Organization.IsApproved = true` and stamps `ApprovedAt`/`ApprovedBy`.
+
+### PUT `/school/{id}/reject`
+OwnerAdmin rejects a pending request with a reason.
+
+**Request body**
+```json
+{ "reason": "Incomplete documentation" }
+```
+
+### GET `/school/pending-approvals`
+Paginated list of all `Pending` approval requests. OwnerAdmin only.
+
+### GET `/school/{id}/approval-history`
+Full approval history for a school (all `SchoolApprovalRequest` rows for that org).
+
+---
+
+## User Management
+
+### POST `/user-management`
+Creates a new user scoped to the caller's org. Caller must have an active `OrgId` in their JWT.
+
+**Request body**
+```json
+{
+  "username": "john.doe",
+  "email": "john@school.com",
+  "password": "Secret123!",
+  "roleIds": [3]
+}
+```
+
+### POST `/user-management/{id}/roles`
+Assigns a role to a user within the caller's org.
+
+**Request body**
+```json
+{ "roleId": 4 }
+```
+
+### DELETE `/user-management/{id}/roles/{roleId}`
+Removes a role assignment within the caller's org (soft-delete).
+
+### PUT `/user-management/{id}/role-level`
+OwnerAdmin only. Upgrades or downgrades a user's system-level role between `SuperAdmin` and `Admin`.
+
+**Request body**
+```json
+{ "targetRole": "SuperAdmin" }
+```
+
+Valid values: `"SuperAdmin"`, `"Admin"`. OwnerAdmin accounts cannot be modified via this endpoint.
+
+---
+
+## Switch School (Auth)
+
+### POST `/auth/switch-school`
+Switches the caller's active school context and returns a fresh token pair with the new `OrgId` claim embedded.
+
+**Request body**
+```json
+{ "orgId": 2 }
+```
+
+The caller must be a member of the target org (via `UserOrganizationMappings`). Returns the same `LoginResponse` shape as `/auth/login`.
+
+---
+
 ## Endpoint Summary
 
 | Method | Route | Auth | Description |
@@ -918,3 +999,21 @@ Returns `400 Bad Request` if:
 | GET | `/org-file-upload-config/screen` | Yes | Get config by orgId + pageId |
 | POST | `/file-upload` | Yes | Upload files (multipart/form-data) |
 | POST | `/dropdown` | Yes | Get dropdown data by key |
+| POST | `/school/register` | Yes | Register a new school (creates approval request) |
+| PUT | `/school/{id}` | Yes | Update school info |
+| DELETE | `/school/{id}` | Yes | Soft-delete school (OwnerAdmin) |
+| GET | `/school/{id}` | Yes | Get school by ID |
+| GET | `/school` | Yes | List schools (OwnerAdmin sees all) |
+| PUT | `/school/{id}/approve` | Yes | Approve school (OwnerAdmin) |
+| PUT | `/school/{id}/reject` | Yes | Reject school with reason (OwnerAdmin) |
+| GET | `/school/pending-approvals` | Yes | List pending approval requests (OwnerAdmin) |
+| GET | `/school/{id}/approval-history` | Yes | Approval history for a school |
+| POST | `/user-management` | Yes | Create user in caller's org |
+| PUT | `/user-management/{id}` | Yes | Update user info |
+| DELETE | `/user-management/{id}` | Yes | Soft-delete user |
+| GET | `/user-management/{id}` | Yes | Get user by ID with roles |
+| GET | `/user-management` | Yes | List users (org-scoped or all for OwnerAdmin) |
+| POST | `/user-management/{id}/roles` | Yes | Assign role to user |
+| DELETE | `/user-management/{id}/roles/{roleId}` | Yes | Remove role from user |
+| PUT | `/user-management/{id}/role-level` | Yes | Upgrade/downgrade between SuperAdmin ↔ Admin (OwnerAdmin) |
+| POST | `/auth/switch-school` | Yes | Switch active school context, returns new token pair |

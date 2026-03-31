@@ -5,6 +5,7 @@ public interface IRequestContext
     string? UserId { get; set; }
     string? Username { get; set; }
     string? Role { get; set; }
+    int?    OrgId { get; set; }
     string? IpAddress { get; set; }
     string? Location { get; set; }
     string? ScreenName { get; set; }

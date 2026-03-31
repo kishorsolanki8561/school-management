@@ -26,9 +26,13 @@ public sealed class RequestContextMiddleware
 
         if (context.User.Identity?.IsAuthenticated == true)
         {
-            requestContext.UserId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            requestContext.UserId   = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
             requestContext.Username = context.User.FindFirstValue(ClaimTypes.Name);
-            requestContext.Role = context.User.FindFirstValue(ClaimTypes.Role);
+            requestContext.Role     = context.User.FindFirstValue(ClaimTypes.Role);
+
+            var orgIdClaim = context.User.FindFirstValue("OrgId");
+            if (int.TryParse(orgIdClaim, out var orgId))
+                requestContext.OrgId = orgId;
         }
 
         await _next(context);

@@ -117,4 +117,46 @@ public static class AppMessages
             => $"Filter column(s) not allowed: {string.Join(", ", cols)}.";
     }
 
+    public static class School
+    {
+        public static string NotFound(int id)
+            => $"School with id {id} was not found.";
+
+        public static string AlreadyExists(string name)
+            => $"A school named '{name}' already exists.";
+
+        public static string AlreadyApproved(int id)
+            => $"School {id} is already approved.";
+
+        public static string AlreadyRejected(int id)
+            => $"School {id} has already been rejected.";
+
+        public const string NoPendingRequest
+            = "No pending approval request found for this school.";
+    }
+
+    public static class UserManagement
+    {
+        public static string NotFound(int id)
+            => $"User with id {id} was not found.";
+
+        public static string UsernameTaken
+            => "Username or email is already in use.";
+
+        public static string RoleNotFound(int roleId)
+            => $"Role with id {roleId} was not found.";
+
+        public static string RoleAlreadyAssigned(int roleId)
+            => $"Role {roleId} is already assigned to this user in this organisation.";
+
+        public static string RoleAssignmentNotFound(int userId, int roleId)
+            => $"Role assignment for user {userId} and role {roleId} was not found.";
+
+        public const string CannotModifyOwnerAdmin
+            = "OwnerAdmin account cannot be modified through this endpoint.";
+
+        public const string InvalidRoleLevel
+            = "Target role must be SuperAdmin or Admin.";
+    }
+
 }

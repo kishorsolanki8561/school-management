@@ -193,7 +193,23 @@ public sealed class AuthService : IAuthService
         await _context.SaveChangesAsync(cancellationToken);
     }
 
-    private async Task<LoginResponse> GenerateTokensAsync(User user, CancellationToken cancellationToken)
+    public async Task<LoginResponse> SwitchSchoolAsync(int userId, int orgId, CancellationToken cancellationToken = default)
+    {
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted && u.IsActive, cancellationToken)
+            ?? throw new UnauthorizedAccessException(AppMessages.Auth.InvalidToken);
+
+        // Confirm the user belongs to the target org
+        var isMember = await _context.UserOrganizationMappings
+            .AnyAsync(m => m.UserId == userId && m.OrgId == orgId && !m.IsDeleted, cancellationToken);
+
+        if (!isMember)
+            throw new UnauthorizedAccessException("User is not a member of the requested organisation.");
+
+        return await GenerateTokensAsync(user, cancellationToken, overrideOrgId: orgId);
+    }
+
+    private async Task<LoginResponse> GenerateTokensAsync(User user, CancellationToken cancellationToken, int? overrideOrgId = null)
     {
         // Load role names + ids in one projection (no Include needed)
         var roleMappings = await _context.UserRoleMappings
@@ -205,7 +221,34 @@ public sealed class AuthService : IAuthService
         var roleIds      = roleMappings.Select(r => r.RoleId).ToList();
         var isOwnerAdmin = roleIds.Contains((int)UserRole.OwnerAdmin);
 
-        var accessToken       = GenerateAccessToken(user, roleNames);
+        // Resolve active OrgId — OwnerAdmin has no tenant, others use first active org (or override)
+        int? activeOrgId = null;
+        string? activeOrgName = null;
+
+        if (!isOwnerAdmin)
+        {
+            if (overrideOrgId.HasValue)
+            {
+                var org = await _context.Organizations
+                    .Where(o => o.Id == overrideOrgId.Value && !o.IsDeleted && o.IsActive)
+                    .Select(o => new { o.Id, o.Name })
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                if (org != null) { activeOrgId = org.Id; activeOrgName = org.Name; }
+            }
+            else
+            {
+                var firstOrg = await _context.UserOrganizationMappings
+                    .Where(uom => uom.UserId == user.Id && !uom.IsDeleted)
+                    .OrderBy(uom => uom.OrgId)
+                    .Select(uom => new { uom.OrgId, OrgName = uom.Organization!.Name })
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                if (firstOrg != null) { activeOrgId = firstOrg.OrgId; activeOrgName = firstOrg.OrgName; }
+            }
+        }
+
+        var accessToken       = GenerateAccessToken(user, roleNames, activeOrgId);
         var refreshTokenValue = GenerateRefreshTokenValue();
         var expiry            = DateTimeUtility.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes);
 
@@ -231,6 +274,8 @@ public sealed class AuthService : IAuthService
             AccessTokenExpiry = expiry,
             Username          = user.Username,
             Role              = roleNames.FirstOrDefault() ?? string.Empty,
+            OrgId             = activeOrgId,
+            OrgName           = activeOrgName,
             Menus             = menus,
         };
     }
@@ -308,7 +353,7 @@ public sealed class AuthService : IAuthService
         int        PageId,
         ActionType ActionId);
 
-    private string GenerateAccessToken(User user, IEnumerable<string> roleNames)
+    private string GenerateAccessToken(User user, IEnumerable<string> roleNames, int? orgId)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -325,6 +370,9 @@ public sealed class AuthService : IAuthService
 
         foreach (var role in roleNames)
             claims.Add(new Claim(ClaimTypes.Role, role));
+
+        if (orgId.HasValue)
+            claims.Add(new Claim("OrgId", orgId.Value.ToString()));
 
         var token = new JwtSecurityToken(
             issuer: _jwtSettings.Issuer,

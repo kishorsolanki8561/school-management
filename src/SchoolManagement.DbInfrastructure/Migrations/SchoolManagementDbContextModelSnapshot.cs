@@ -437,6 +437,20 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("SchoolCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<bool>("IsApproved")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ApprovedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Name")
@@ -568,6 +582,69 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("OrgFileUploadConfigs");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Models.Entities.SchoolApprovalRequest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<int>("OrgId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RequestedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int?>("ReviewedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("IpAddress")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Location")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrgId");
+
+                    b.HasIndex("RequestedByUserId");
+
+                    b.HasIndex("ReviewedByUserId");
+
+                    b.ToTable("SchoolApprovalRequests");
                 });
 
             modelBuilder.Entity("SchoolManagement.Models.Entities.OrgRolePermission", b =>
@@ -1183,6 +1260,9 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                     b.Property<string>("ModifiedBy")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("OrgId")
+                        .HasColumnType("int");
+
                     b.Property<int>("RoleId")
                         .HasColumnType("int");
 
@@ -1191,10 +1271,13 @@ namespace SchoolManagement.DbInfrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("OrgId");
+
                     b.HasIndex("RoleId");
 
-                    b.HasIndex("UserId", "RoleId")
-                        .IsUnique();
+                    b.HasIndex("UserId", "RoleId", "OrgId")
+                        .IsUnique()
+                        .HasFilter("[OrgId] IS NOT NULL");
 
                     b.ToTable("UserRoleMappings");
                 });
@@ -1448,6 +1531,11 @@ namespace SchoolManagement.DbInfrastructure.Migrations
 
             modelBuilder.Entity("SchoolManagement.Models.Entities.UserRoleMapping", b =>
                 {
+                    b.HasOne("SchoolManagement.Models.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrgId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("SchoolManagement.Models.Entities.Role", "Role")
                         .WithMany("UserRoleMappings")
                         .HasForeignKey("RoleId")
@@ -1460,9 +1548,37 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("Organization");
+
                     b.Navigation("Role");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Models.Entities.SchoolApprovalRequest", b =>
+                {
+                    b.HasOne("SchoolManagement.Models.Entities.Organization", "Organization")
+                        .WithMany("ApprovalRequests")
+                        .HasForeignKey("OrgId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SchoolManagement.Models.Entities.User", "RequestedBy")
+                        .WithMany()
+                        .HasForeignKey("RequestedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SchoolManagement.Models.Entities.User", "ReviewedBy")
+                        .WithMany()
+                        .HasForeignKey("ReviewedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("RequestedBy");
+
+                    b.Navigation("ReviewedBy");
                 });
 
             modelBuilder.Entity("SchoolManagement.Models.Entities.Country", b =>
@@ -1479,14 +1595,9 @@ namespace SchoolManagement.DbInfrastructure.Migrations
 
             modelBuilder.Entity("SchoolManagement.Models.Entities.Organization", b =>
                 {
+                    b.Navigation("ApprovalRequests");
+
                     b.Navigation("UserOrganizationMappings");
-                });
-
-            modelBuilder.Entity("SchoolManagement.Models.Entities.OrgCustomRoleConfiguration", b =>
-                {
-                    b.Navigation("OrgRolePermissions");
-
-                    b.Navigation("UserOrgRoleMappings");
                 });
 
             modelBuilder.Entity("SchoolManagement.Models.Entities.PageMaster", b =>
