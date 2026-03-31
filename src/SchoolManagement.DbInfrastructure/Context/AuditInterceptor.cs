@@ -81,6 +81,7 @@ public sealed class AuditInterceptor : SaveChangesInterceptor
                 CreatedBy  = _requestContext.Username,
                 IpAddress  = _requestContext.IpAddress,
                 Location   = _requestContext.Location,
+                OrgId      = _requestContext.OrgId,
                 // ParentAuditLogId resolved below after parent logs are saved
             };
         }

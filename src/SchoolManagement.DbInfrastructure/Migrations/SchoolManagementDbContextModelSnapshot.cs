@@ -65,6 +65,9 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                     b.Property<string>("OldData")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("OrgId")
+                        .HasColumnType("int");
+
                     b.Property<int?>("ParentAuditLogId")
                         .HasColumnType("int");
 
@@ -85,6 +88,8 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                     b.HasIndex("EntityId");
 
                     b.HasIndex("EntityName");
+
+                    b.HasIndex("OrgId");
 
                     b.HasIndex("ParentAuditLogId");
 
@@ -1619,6 +1624,95 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                     b.Navigation("UserRoleMappings");
                 });
 
+            modelBuilder.Entity("SchoolManagement.Models.Entities.OrgStorageConfig", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<int>("OrgId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StorageType")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("BasePath")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("BucketName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Region")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("AccessKey")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("SecretKey")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ContainerName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ConnectionString")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("IpAddress")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Location")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrgId")
+                        .IsUnique();
+
+                    b.ToTable("OrgStorageConfigs");
+
+                });
+
+            modelBuilder.Entity("SchoolManagement.Models.Entities.OrgStorageConfig", b =>
+                {
+                    b.HasOne("SchoolManagement.Models.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrgId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Organization");
+                });
+
             modelBuilder.Entity("SchoolManagement.Models.Entities.State", b =>
                 {
                     b.Navigation("Cities");
@@ -1631,6 +1725,134 @@ namespace SchoolManagement.DbInfrastructure.Migrations
                     b.Navigation("UserOrganizationMappings");
 
                     b.Navigation("UserRoleMappings");
+                });
+            modelBuilder.Entity("SchoolManagement.Models.Entities.OrgNotificationConfig", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+                    b.Property<int>("OrgId").HasColumnType("int");
+                    b.Property<int>("Channel").HasColumnType("int");
+                    b.Property<bool>("IsActive").HasColumnType("bit");
+                    b.Property<string>("SmtpHost").HasMaxLength(200).HasColumnType("nvarchar(200)");
+                    b.Property<int?>("SmtpPort").HasColumnType("int");
+                    b.Property<string>("SmtpUsername").HasMaxLength(200).HasColumnType("nvarchar(200)");
+                    b.Property<string>("SmtpPassword").HasMaxLength(500).HasColumnType("nvarchar(500)");
+                    b.Property<string>("FromAddress").HasMaxLength(200).HasColumnType("nvarchar(200)");
+                    b.Property<string>("FromName").HasMaxLength(200).HasColumnType("nvarchar(200)");
+                    b.Property<bool?>("EnableSsl").HasColumnType("bit");
+                    b.Property<int?>("SmsProvider").HasColumnType("int");
+                    b.Property<string>("ApiKey").HasMaxLength(500).HasColumnType("nvarchar(500)");
+                    b.Property<string>("AccountSid").HasMaxLength(200).HasColumnType("nvarchar(200)");
+                    b.Property<string>("AuthToken").HasMaxLength(500).HasColumnType("nvarchar(500)");
+                    b.Property<string>("SenderNumber").HasMaxLength(50).HasColumnType("nvarchar(50)");
+                    b.Property<string>("SenderName").HasMaxLength(200).HasColumnType("nvarchar(200)");
+                    b.Property<string>("PushServerKey").HasMaxLength(500).HasColumnType("nvarchar(500)");
+                    b.Property<string>("PushSenderId").HasMaxLength(200).HasColumnType("nvarchar(200)");
+                    b.Property<DateTime>("CreatedAt").HasColumnType("datetime2");
+                    b.Property<string>("CreatedBy").HasColumnType("nvarchar(max)");
+                    b.Property<DateTime?>("ModifiedAt").HasColumnType("datetime2");
+                    b.Property<string>("ModifiedBy").HasColumnType("nvarchar(max)");
+                    b.Property<bool>("IsDeleted").HasColumnType("bit");
+                    b.Property<string>("DeletedBy").HasColumnType("nvarchar(max)");
+                    b.Property<string>("IpAddress").HasColumnType("nvarchar(max)");
+                    b.Property<string>("Location").HasColumnType("nvarchar(max)");
+                    b.HasKey("Id");
+                    b.HasIndex(new[] { "OrgId", "Channel" }).IsUnique();
+                    b.ToTable("OrgNotificationConfigs");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Models.Entities.NotificationTemplate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+                    b.Property<int?>("OrgId").HasColumnType("int");
+                    b.Property<int>("EventType").HasColumnType("int");
+                    b.Property<int?>("Channel").HasColumnType("int");
+                    b.Property<string>("Subject").IsRequired().HasMaxLength(500).HasColumnType("nvarchar(500)");
+                    b.Property<string>("Body").IsRequired().HasColumnType("nvarchar(max)");
+                    b.Property<bool>("IsBodyHtml").HasColumnType("bit");
+                    b.Property<string>("ToAddresses").HasMaxLength(1000).HasColumnType("nvarchar(1000)");
+                    b.Property<string>("CcAddresses").HasMaxLength(1000).HasColumnType("nvarchar(1000)");
+                    b.Property<string>("BccAddresses").HasMaxLength(1000).HasColumnType("nvarchar(1000)");
+                    b.Property<bool>("IsActive").HasColumnType("bit");
+                    b.Property<DateTime>("CreatedAt").HasColumnType("datetime2");
+                    b.Property<string>("CreatedBy").HasColumnType("nvarchar(max)");
+                    b.Property<DateTime?>("ModifiedAt").HasColumnType("datetime2");
+                    b.Property<string>("ModifiedBy").HasColumnType("nvarchar(max)");
+                    b.Property<bool>("IsDeleted").HasColumnType("bit");
+                    b.Property<string>("DeletedBy").HasColumnType("nvarchar(max)");
+                    b.Property<string>("IpAddress").HasColumnType("nvarchar(max)");
+                    b.Property<string>("Location").HasColumnType("nvarchar(max)");
+                    b.HasKey("Id");
+                    b.HasIndex(new[] { "OrgId", "EventType", "Channel" }).IsUnique();
+                    b.ToTable("NotificationTemplates");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Models.Entities.InAppNotification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+                    b.Property<int>("UserId").HasColumnType("int");
+                    b.Property<int?>("OrgId").HasColumnType("int");
+                    b.Property<int>("EventType").HasColumnType("int");
+                    b.Property<string>("Title").IsRequired().HasMaxLength(500).HasColumnType("nvarchar(500)");
+                    b.Property<string>("Body").IsRequired().HasColumnType("nvarchar(max)");
+                    b.Property<bool>("IsRead").HasColumnType("bit");
+                    b.Property<DateTime?>("ReadAt").HasColumnType("datetime2");
+                    b.Property<DateTime>("CreatedAt").HasColumnType("datetime2");
+                    b.Property<string>("CreatedBy").HasColumnType("nvarchar(max)");
+                    b.Property<DateTime?>("ModifiedAt").HasColumnType("datetime2");
+                    b.Property<string>("ModifiedBy").HasColumnType("nvarchar(max)");
+                    b.Property<bool>("IsDeleted").HasColumnType("bit");
+                    b.Property<string>("DeletedBy").HasColumnType("nvarchar(max)");
+                    b.Property<string>("IpAddress").HasColumnType("nvarchar(max)");
+                    b.Property<string>("Location").HasColumnType("nvarchar(max)");
+                    b.HasKey("Id");
+                    b.HasIndex("UserId");
+                    b.HasIndex(new[] { "UserId", "IsRead" });
+                    b.ToTable("InAppNotifications");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Models.Entities.OrgNotificationConfig", b =>
+                {
+                    b.HasOne("SchoolManagement.Models.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrgId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                    b.Navigation("Organization");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Models.Entities.NotificationTemplate", b =>
+                {
+                    b.HasOne("SchoolManagement.Models.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrgId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired(false);
+                    b.Navigation("Organization");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Models.Entities.InAppNotification", b =>
+                {
+                    b.HasOne("SchoolManagement.Models.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                    b.Navigation("User");
+                    b.HasOne("SchoolManagement.Models.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrgId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired(false);
+                    b.Navigation("Organization");
                 });
 #pragma warning restore 612, 618
         }

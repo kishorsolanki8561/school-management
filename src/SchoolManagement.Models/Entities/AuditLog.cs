@@ -18,4 +18,6 @@ public sealed class AuditLog
     public DateTime Timestamp { get; init; } = DateTime.UtcNow;
     public string? BatchId { get; init; }
     public int? ParentAuditLogId { get; set; }
+    /// <summary>Tenant that triggered this change. Null for OwnerAdmin (platform-wide) actions.</summary>
+    public int? OrgId { get; init; }
 }

@@ -20,5 +20,8 @@ internal sealed class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
         builder.Property(a => a.ParentAuditLogId).IsRequired(false);
         builder.HasIndex(a => a.ParentAuditLogId);
         // No FK constraint — audit rows may be archived/purged independently
+
+        builder.Property(a => a.OrgId).IsRequired(false);
+        builder.HasIndex(a => a.OrgId);
     }
 }

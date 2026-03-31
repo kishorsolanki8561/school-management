@@ -18,12 +18,18 @@ public sealed class SchoolService : ISchoolService
     private readonly SchoolManagementDbContext _context;
     private readonly IReadRepository          _readRepo;
     private readonly IRequestContext          _requestContext;
+    private readonly INotificationService     _notificationService;
 
-    public SchoolService(SchoolManagementDbContext context, IReadRepository readRepo, IRequestContext requestContext)
+    public SchoolService(
+        SchoolManagementDbContext context,
+        IReadRepository           readRepo,
+        IRequestContext           requestContext,
+        INotificationService      notificationService)
     {
-        _context        = context;
-        _readRepo       = readRepo;
-        _requestContext = requestContext;
+        _context             = context;
+        _readRepo            = readRepo;
+        _requestContext      = requestContext;
+        _notificationService = notificationService;
     }
 
     public async Task<SchoolResponse> RegisterAsync(RegisterSchoolRequest request, CancellationToken ct = default)
@@ -147,6 +153,26 @@ public sealed class SchoolService : ISchoolService
         // Copy all system roles + their permissions for this org
         await CopySystemRolesAndPermissionsAsync(id, ct);
 
+        // Send approval notification (fire-and-forget — don't block if not configured)
+        var adminUser = await _context.Users.FindAsync(new object[] { approvalRequest.RequestedByUserId }, ct);
+        if (adminUser is not null)
+        {
+            await _notificationService.SendAsync(new NotificationRequest(
+                OrgId:        id,
+                EventType:    NotificationEventType.SchoolApproved,
+                Placeholders: new Dictionary<string, string>
+                {
+                    ["SchoolName"] = org.Name,
+                    ["AdminName"]  = adminUser.Username,
+                    ["Date"]       = DateTime.UtcNow.ToString("yyyy-MM-dd"),
+                },
+                ToEmail:     adminUser.Email,
+                ToPhone:     null,
+                ToUserId:    adminUser.Id,
+                DeviceToken: null
+            ), ct);
+        }
+
         return await GetByIdAsync(id, ct)
                ?? throw new KeyNotFoundException(AppMessages.School.NotFound(id));
     }
@@ -168,6 +194,27 @@ public sealed class SchoolService : ISchoolService
         approvalRequest.ReviewedAt       = DateTime.UtcNow;
 
         await _context.SaveChangesAsync(ct);
+
+        // Send rejection notification (fire-and-forget — don't block if not configured)
+        var adminUser = await _context.Users.FindAsync(new object[] { approvalRequest.RequestedByUserId }, ct);
+        if (adminUser is not null)
+        {
+            await _notificationService.SendAsync(new NotificationRequest(
+                OrgId:        id,
+                EventType:    NotificationEventType.SchoolRejected,
+                Placeholders: new Dictionary<string, string>
+                {
+                    ["SchoolName"]      = org.Name,
+                    ["AdminName"]       = adminUser.Username,
+                    ["Date"]            = DateTime.UtcNow.ToString("yyyy-MM-dd"),
+                    ["RejectionReason"] = request.RejectionReason ?? string.Empty,
+                },
+                ToEmail:     adminUser.Email,
+                ToPhone:     null,
+                ToUserId:    adminUser.Id,
+                DeviceToken: null
+            ), ct);
+        }
 
         return await GetByIdAsync(id, ct)
                ?? throw new KeyNotFoundException(AppMessages.School.NotFound(id));

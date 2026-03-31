@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using SchoolManagement.API.Extensions;
+using SchoolManagement.API.Hubs;
 using SchoolManagement.Common.Configuration;
 using SchoolManagement.Common.Extensions;
 using SchoolManagement.DbInfrastructure.Extensions;
@@ -36,6 +37,12 @@ builder.Services.AddApiVersioningConfig();
 
 // ── Controllers ───────────────────────────────────────────────────────────────
 builder.Services.AddControllers();
+
+// ── SignalR (real-time in-app notifications) ──────────────────────────────────
+builder.Services.AddSignalR();
+
+// ── HttpClient (used by SMS channel handlers) ─────────────────────────────────
+builder.Services.AddHttpClient();
 
 // ── Swagger ────────────────────────────────────────────────────────────────────
 builder.Services.AddEndpointsApiExplorer();
@@ -108,6 +115,9 @@ app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
 
 // 9. Controllers
 app.MapControllers();
+
+// 10. SignalR hub
+app.MapHub<NotificationHub>("/hubs/notifications");
 
 app.Run();
 

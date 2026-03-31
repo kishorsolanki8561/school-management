@@ -384,6 +384,45 @@ await _context.SaveChangesAsync();
 - ChangeRoleLevelAsync — throws when target role is not SuperAdmin or Admin
 - ChangeRoleLevelAsync — throws when target user is OwnerAdmin
 
+### NotificationConfigService
+- SaveAsync — creates new config when none exists for (OrgId, Channel)
+- SaveAsync — updates existing config (upsert)
+- SaveAsync — restores soft-deleted config on upsert
+- GetAsync — returns config for (orgId, channel)
+- GetAsync — returns null when not configured
+- GetAllByOrgAsync — returns all channel configs for an org
+- DeleteAsync — soft-deletes the config
+
+### NotificationTemplateService
+- SaveAsync — OwnerAdmin creates global template (OrgId = null)
+- SaveAsync — org user creates org-specific template
+- SaveAsync — upserts existing template for same (OrgId, EventType, Channel)
+- SaveAsync — supports generic template (Channel = null)
+- GetAsync — returns matching template
+- GetAsync — returns null when not found
+- GetAllAsync — returns all templates for an org or global
+- DeleteAsync — soft-deletes the template
+
+### NotificationService
+- SendAsync — dispatches to all enabled channels in parallel
+- SendAsync — uses caller-specified channels when provided
+- SendAsync — always includes InApp even when not in OrgNotificationConfigs
+- SendAsync — returns per-channel results (one failure does not block others)
+- Template resolution — prefers org+channel-specific over org+generic over global+channel over global+generic
+
+### InAppNotificationService
+- GetForUserAsync — returns paginated notifications for user
+- GetForUserAsync — filters by unreadOnly=true
+- GetUnreadCountAsync — returns correct unread count
+- MarkReadAsync — marks specific notifications as read with ReadAt timestamp
+- MarkAllReadAsync — marks all unread notifications as read
+
+### OrgStorageConfigService
+- SaveAsync — creates new config when none exists for the org
+- SaveAsync — updates existing config (upsert)
+- GetByOrgIdAsync — returns config or null
+- DeleteAsync — soft-deletes the config
+
 ---
 
 ## Test Assembly Config

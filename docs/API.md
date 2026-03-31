@@ -1031,3 +1031,172 @@ The caller must be a member of the target org (via `UserOrganizationMappings`). 
 | POST | `/auth/switch-school` | Yes | Switch active school context, returns new token pair |
 | PUT | `/menu-and-page-permission/org/{orgId}/{id}/{roleId}` | Yes | Toggle org-specific permission (SuperAdmin/Admin) |
 | GET | `/menu-and-page-permission/org/{orgId}` | Yes | Get org-specific permissions (filterable by menuId, pageId, roleId) |
+| PUT | `/org-storage-config` | Yes | Create/update file storage config for caller's org |
+| GET | `/org-storage-config/{orgId}` | Yes | Get file storage config for an org |
+| DELETE | `/org-storage-config/{orgId}` | Yes | Soft-delete file storage config for an org |
+| PUT | `/org-notification-config` | Yes | Create/update channel config for caller's org |
+| GET | `/org-notification-config/{orgId}` | Yes | Get all channel configs for an org |
+| GET | `/org-notification-config/{orgId}/{channel}` | Yes | Get config for a specific channel |
+| DELETE | `/org-notification-config/{orgId}/{channel}` | Yes | Delete a channel config |
+| PUT | `/notification-template` | Yes | Create/update notification template (OwnerAdmin = global) |
+| GET | `/notification-template/{orgId}` | Yes | List all templates for an org (orgId=0 = global defaults) |
+| GET | `/notification-template/{orgId}/{eventType}/{channel}` | Yes | Get template by event + channel |
+| DELETE | `/notification-template/{id}` | Yes | Soft-delete a template |
+| GET | `/in-app-notification` | Yes | Get current user's in-app notifications (paginated) |
+| GET | `/in-app-notification/unread-count` | Yes | Get unread notification count |
+| PUT | `/in-app-notification/mark-read` | Yes | Mark specific notifications as read |
+| PUT | `/in-app-notification/mark-all-read` | Yes | Mark all notifications as read |
+| WS  | `/hubs/notifications` | Yes | SignalR hub — receive real-time in-app notifications |
+
+---
+
+## Org Storage Config
+
+Each org configures **one** active file storage backend. Storage type determines which fields are required.
+
+### PUT `/org-storage-config`
+Create or update the storage config for the caller's org (upsert by OrgId).
+
+**Storage types:** `HostingServer` | `AWSS3` | `AzureBlob`
+
+**Request body — HostingServer**
+```json
+{
+  "storageType": "HostingServer",
+  "basePath": "/var/uploads/schools"
+}
+```
+
+**Request body — AWS S3**
+```json
+{
+  "storageType": "AWSS3",
+  "bucketName": "my-school-bucket",
+  "region": "ap-south-1",
+  "accessKey": "AKIA...",
+  "secretKey": "..."
+}
+```
+
+**Request body — Azure Blob**
+```json
+{
+  "storageType": "AzureBlob",
+  "containerName": "school-uploads",
+  "connectionString": "DefaultEndpointsProtocol=https;AccountName=..."
+}
+```
+
+> **Note:** `SecretKey` and `ConnectionString` are write-only — they are never returned in GET responses.
+
+---
+
+---
+
+## Unified Notification System
+
+The notification system supports multiple channels per event. Channels are dispatched in parallel.
+
+### Channels
+| Channel | Description |
+|---|---|
+| `Email` | SMTP email via org config or appsettings fallback |
+| `SMS` | SMS via Twilio / Infobip / SslWireless (org picks provider) |
+| `Push` | Firebase FCM — future update |
+| `InApp` | Stored in DB + real-time via SignalR |
+
+### SMS Providers
+| Provider | Owner Admin Default | Notes |
+|---|---|---|
+| `Infobip` | ✅ appsettings | International |
+| `Twilio` | — | Org configures own credentials |
+| `SslWireless` | — | BD local provider |
+
+### Template Resolution Order (per channel)
+1. Org-specific + channel-specific  (`OrgId=X, Channel=Email`)
+2. Org-specific + generic fallback  (`OrgId=X, Channel=null`)
+3. Global + channel-specific        (`OrgId=null, Channel=Email`)
+4. Global + generic fallback        (`OrgId=null, Channel=null`)
+5. Not found → warning in result
+
+### Supported Placeholders
+| Placeholder | Description |
+|---|---|
+| `{{SchoolName}}` | Name of the school/org |
+| `{{AdminName}}` | Name of the admin user |
+| `{{Date}}` | Current date (UTC, yyyy-MM-dd) |
+| `{{RejectionReason}}` | Reason for rejection |
+| `{{StudentName}}` | Student name |
+| `{{FeeDueDate}}` | Fee due date |
+| `{{Amount}}` | Fee amount |
+
+### PUT `/org-notification-config`
+Create or update a channel config for the caller's org (upsert by OrgId + Channel).
+
+**Email channel request body**
+```json
+{
+  "channel": "Email",
+  "smtpHost": "smtp.gmail.com",
+  "smtpPort": 587,
+  "smtpUsername": "noreply@school.com",
+  "smtpPassword": "...",
+  "fromAddress": "noreply@school.com",
+  "fromName": "My School",
+  "enableSsl": true
+}
+```
+
+**SMS channel (Twilio) request body**
+```json
+{
+  "channel": "SMS",
+  "smsProvider": "Twilio",
+  "accountSid": "ACxxx",
+  "authToken": "...",
+  "senderNumber": "+1234567890"
+}
+```
+
+**SMS channel (Infobip) request body**
+```json
+{
+  "channel": "SMS",
+  "smsProvider": "Infobip",
+  "apiKey": "...",
+  "senderName": "MySchool"
+}
+```
+
+> Secrets (password, authToken, apiKey, smtpPassword, pushServerKey) are write-only — not returned in GET responses.
+
+### PUT `/notification-template`
+Create or update a notification template. OwnerAdmin creates global defaults (OrgId = null); org users create org-specific templates.
+
+**Request body**
+```json
+{
+  "eventType": "SchoolApproved",
+  "channel": "Email",
+  "subject": "Your school {{SchoolName}} is approved!",
+  "body": "<p>Dear {{AdminName}},</p><p>Approved on {{Date}}.</p>",
+  "isBodyHtml": true,
+  "toAddresses": null,
+  "ccAddresses": "support@platform.com",
+  "bccAddresses": null
+}
+```
+
+Set `channel: null` for a generic template used as fallback for all channels.
+
+### SignalR — `/hubs/notifications`
+Connect with a valid JWT. The server pushes `ReceiveNotification` events:
+```json
+{
+  "id": 42,
+  "eventType": "SchoolApproved",
+  "title": "Your school has been approved!",
+  "body": "...",
+  "createdAt": "2026-03-31T20:00:00Z"
+}
+```

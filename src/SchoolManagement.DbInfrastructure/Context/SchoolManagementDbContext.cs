@@ -34,6 +34,10 @@ public sealed class SchoolManagementDbContext : DbContext
     public DbSet<MenuAndPagePermission>         MenuAndPagePermissions          => Set<MenuAndPagePermission>();
     public DbSet<OrgFileUploadConfig>           OrgFileUploadConfigs            => Set<OrgFileUploadConfig>();
     public DbSet<SchoolApprovalRequest>         SchoolApprovalRequests          => Set<SchoolApprovalRequest>();
+    public DbSet<OrgStorageConfig>              OrgStorageConfigs               => Set<OrgStorageConfig>();
+    public DbSet<OrgNotificationConfig>         OrgNotificationConfigs          => Set<OrgNotificationConfig>();
+    public DbSet<NotificationTemplate>          NotificationTemplates           => Set<NotificationTemplate>();
+    public DbSet<InAppNotification>             InAppNotifications              => Set<InAppNotification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
