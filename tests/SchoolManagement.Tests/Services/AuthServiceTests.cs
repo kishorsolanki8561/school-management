@@ -36,6 +36,7 @@ public sealed class AuthServiceTests : IDisposable
                 ["EmailSettings:FromEmail"]                  = "test@test.com",
                 ["EmailSettings:ResetPasswordBaseUrl"]       = "https://app.test/reset-password",
                 ["EmailSettings:TokenExpirationHours"]       = "24",
+                ["ConnectionStrings:DefaultConnection"]      = "Server=test;Database=test;",
             })
             .Build();
 

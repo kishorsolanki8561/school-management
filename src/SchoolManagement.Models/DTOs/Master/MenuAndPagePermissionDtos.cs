@@ -11,6 +11,7 @@ public sealed class MenuAndPagePermissionResponse
     public ActionType ActionId     { get; init; }
     public int        RoleId       { get; init; }
     public bool       IsAllowed    { get; init; }
+    public int?       OrgId        { get; init; }
     public DateTime   CreatedAt    { get; init; }
 }
 

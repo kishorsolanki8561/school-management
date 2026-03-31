@@ -47,6 +47,56 @@ public sealed class MenuAndPagePermissionService : IMenuAndPagePermissionService
         => _readRepo.QueryFirstOrDefaultAsync<MenuAndPagePermissionResponse>(
                MenuAndPagePermissionQueries.GetById, new { Id = id });
 
+    public async Task<MenuAndPagePermissionResponse> UpdateOrgPermissionAsync(int id, int roleId, int orgId, CancellationToken ct = default)
+    {
+        var permission = await _context.MenuAndPagePermissions
+            .FirstOrDefaultAsync(p => p.Id == id && p.RoleId == roleId && p.OrgId == orgId, ct)
+            ?? throw new KeyNotFoundException(AppMessages.MenuAndPagePermission.NotFound(id));
+
+        permission.IsAllowed = !permission.IsAllowed;
+        await _context.SaveChangesAsync(ct);
+
+        return new MenuAndPagePermissionResponse
+        {
+            Id           = permission.Id,
+            MenuId       = permission.MenuId,
+            PageId       = permission.PageId,
+            PageModuleId = permission.PageModuleId,
+            ActionId     = permission.ActionId,
+            RoleId       = permission.RoleId,
+            IsAllowed    = permission.IsAllowed,
+            OrgId        = permission.OrgId,
+            CreatedAt    = permission.CreatedAt,
+        };
+    }
+
+    public async Task<PagedResult<MenuAndPagePermissionResponse>> GetOrgPermissionsAsync(
+        int orgId, PaginationRequest request,
+        int? menuId = null, int? pageId = null, int? roleId = null,
+        CancellationToken ct = default)
+    {
+        var param = new
+        {
+            OrgId    = orgId,
+            MenuId   = menuId,
+            PageId   = pageId,
+            RoleId   = roleId,
+            DateFrom = request.DateFrom,
+            DateTo   = request.DateTo,
+            Offset   = request.Offset,
+            request.PageSize,
+        };
+
+        var dataSql = QueryBuilder.AppendPaging(
+            MenuAndPagePermissionQueries.GetOrgPermissions,
+            request.SortBy, request.SortDescending,
+            MenuAndPagePermissionQueries.AllowedSortColumns,
+            MenuAndPagePermissionQueries.DefaultSortColumn);
+
+        return await _readRepo.QueryPagedAsync<MenuAndPagePermissionResponse>(
+            dataSql, MenuAndPagePermissionQueries.CountOrgPermissions, param, request.Page, request.PageSize);
+    }
+
     public async Task<PagedResult<MenuAndPagePermissionResponse>> GetAllAsync(
         PaginationRequest request,
         int? menuId = null,

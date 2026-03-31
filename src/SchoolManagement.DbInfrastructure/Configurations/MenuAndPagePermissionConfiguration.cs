@@ -12,7 +12,8 @@ internal sealed class MenuAndPagePermissionConfiguration : IEntityTypeConfigurat
 
         builder.Property(p => p.ActionId).HasConversion<int>();
 
-        builder.HasIndex(p => new { p.MenuId, p.PageId, p.PageModuleId, p.ActionId, p.RoleId }).IsUnique();
+        // Unique per org — null OrgId = system template, non-null = org-specific copy
+        builder.HasIndex(p => new { p.MenuId, p.PageId, p.PageModuleId, p.ActionId, p.RoleId, p.OrgId }).IsUnique();
 
         builder.HasOne(p => p.Menu)
                .WithMany()
@@ -30,8 +31,14 @@ internal sealed class MenuAndPagePermissionConfiguration : IEntityTypeConfigurat
                .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(p => p.Role)
-               .WithMany()
+               .WithMany(r => r.Permissions)
                .HasForeignKey(p => p.RoleId)
                .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(p => p.Organization)
+               .WithMany()
+               .HasForeignKey(p => p.OrgId)
+               .OnDelete(DeleteBehavior.Restrict)
+               .IsRequired(false);
     }
 }

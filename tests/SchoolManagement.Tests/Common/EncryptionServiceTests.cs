@@ -27,11 +27,12 @@ public sealed class EncryptionServiceTests
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string>
             {
-                ["EncryptionSettings:AesKey"] = Convert.ToBase64String(aesKey),
-                ["EncryptionSettings:RsaPrivateKeyPem"] = privateKeyPem,
-                ["JwtSettings:SecretKey"] = "test-secret",
-                ["JwtSettings:Issuer"] = "test",
-                ["JwtSettings:Audience"] = "test"
+                ["EncryptionSettings:AesKey"]            = Convert.ToBase64String(aesKey),
+                ["EncryptionSettings:RsaPrivateKeyPem"]  = privateKeyPem,
+                ["JwtSettings:SecretKey"]                = "test-secret",
+                ["JwtSettings:Issuer"]                   = "test",
+                ["JwtSettings:Audience"]                 = "test",
+                ["ConnectionStrings:DefaultConnection"]  = "Server=test;Database=test;"
             })
             .Build();
 

@@ -264,7 +264,7 @@ public sealed class AuthService : IAuthService
 
         // Build dynamic menu tree — exactly 2 SQL queries regardless of tree depth
         var menus = roleIds.Count > 0
-            ? await GetDynamicMenusAsync(roleIds, isOwnerAdmin, cancellationToken)
+            ? await GetDynamicMenusAsync(roleIds, isOwnerAdmin, activeOrgId, cancellationToken)
             : new List<DynamicMenuResponse>();
 
         return new LoginResponse
@@ -285,14 +285,15 @@ public sealed class AuthService : IAuthService
     /// then assembles the parent→child→pages→modules→actions hierarchy in memory.
     /// </summary>
     private async Task<IList<DynamicMenuResponse>> GetDynamicMenusAsync(
-        IList<int> roleIds, bool isOwnerAdmin, CancellationToken ct)
+        IList<int> roleIds, bool isOwnerAdmin, int? orgId, CancellationToken ct)
     {
-        var param = new { RoleIds = roleIds.ToArray(), IsOwnerAdmin = isOwnerAdmin ? 1 : 0 };
+        // OwnerAdmin uses system-level permissions (OrgId IS NULL in DB).
+        // All other users use their org-specific permission copies.
+        var param = new { RoleIds = roleIds.ToArray(), OrgId = isOwnerAdmin ? (int?)null : orgId };
 
         // Query 1: all visible menus (flat)
         var flatMenus = (await _readRepo.QueryAsync<DynamicMenuResponse>(
-                             AuthQueries.GetDynamicMenus,
-                             new { param.RoleIds }))
+                             AuthQueries.GetDynamicMenus, param))
                         .ToList();
 
         if (flatMenus.Count == 0)
@@ -305,8 +306,7 @@ public sealed class AuthService : IAuthService
 
         // Query 3: all permitted module+action rows across every page in one shot
         var moduleRows = (await _readRepo.QueryAsync<ModuleActionRow>(
-                              AuthQueries.GetDynamicModules,
-                              new { param.RoleIds }))
+                              AuthQueries.GetDynamicModules, param))
                          .ToList();
 
         // Build modules: group (PageId, ModuleId, ModuleName) → collect ActionIds

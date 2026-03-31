@@ -144,6 +144,9 @@ public sealed class SchoolService : ISchoolService
 
         await _context.SaveChangesAsync(ct);
 
+        // Copy all system roles + their permissions for this org
+        await CopySystemRolesAndPermissionsAsync(id, ct);
+
         return await GetByIdAsync(id, ct)
                ?? throw new KeyNotFoundException(AppMessages.School.NotFound(id));
     }
@@ -184,5 +187,62 @@ public sealed class SchoolService : ISchoolService
         var rows = await _readRepo.QueryAsync<ApprovalRequestResponse>(
             SchoolQueries.GetApprovalHistory, new { OrgId = orgId });
         return rows.ToList();
+    }
+
+    // ── Private helpers ───────────────────────────────────────────────────────
+
+    /// <summary>
+    /// On school approval, copies every system role (OrgId IS NULL) and all their
+    /// MenuAndPagePermissions into org-specific rows tagged with the new OrgId.
+    /// Idempotent — skips roles/permissions already copied for this org.
+    /// </summary>
+    private async Task CopySystemRolesAndPermissionsAsync(int orgId, CancellationToken ct)
+    {
+        // Load all system roles (OrgId IS NULL) with their permissions
+        var systemRoles = await _context.Roles
+            .Where(r => r.OrgId == null && !r.IsDeleted)
+            .Include(r => r.Permissions.Where(p => !p.IsDeleted))
+            .ToListAsync(ct);
+
+        // Load already-copied role IDs for this org to ensure idempotency
+        var alreadyCopiedSystemIds = await _context.Roles
+            .Where(r => r.OrgId == orgId && r.SystemRoleId != null && !r.IsDeleted)
+            .Select(r => r.SystemRoleId!.Value)
+            .ToListAsync(ct);
+
+        foreach (var systemRole in systemRoles)
+        {
+            if (alreadyCopiedSystemIds.Contains(systemRole.Id))
+                continue;
+
+            var orgRole = new Role
+            {
+                Name         = systemRole.Name,
+                Description  = systemRole.Description,
+                IsOrgRole    = true,
+                OrgId        = orgId,
+                SystemRoleId = systemRole.Id,
+            };
+
+            await _context.Roles.AddAsync(orgRole, ct);
+            await _context.SaveChangesAsync(ct); // flush to get orgRole.Id
+
+            var orgPermissions = systemRole.Permissions.Select(p => new MenuAndPagePermission
+            {
+                MenuId       = p.MenuId,
+                PageId       = p.PageId,
+                PageModuleId = p.PageModuleId,
+                ActionId     = p.ActionId,
+                RoleId       = orgRole.Id,
+                IsAllowed    = p.IsAllowed,
+                OrgId        = orgId,
+            }).ToList();
+
+            if (orgPermissions.Count > 0)
+            {
+                await _context.MenuAndPagePermissions.AddRangeAsync(orgPermissions, ct);
+                await _context.SaveChangesAsync(ct);
+            }
+        }
     }
 }

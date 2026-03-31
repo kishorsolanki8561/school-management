@@ -13,4 +13,5 @@ public enum DropdownKey
     ParentMenuDDL   = 6,
     MenuDDL         = 7,
     PageDDL         = 8,
+    SchoolDDL       = 9,
 }

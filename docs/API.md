@@ -843,6 +843,7 @@ Fetch dropdown items for the specified key.
 | `ParentMenuDDL` | MenuMasters (`HasChild=1` only) | `Position`, `IconClass` | `IsActive` |
 | `MenuDDL` | MenuMasters | `ParentMenuId`, `Position`, `IconClass`, `HasChild` | `ParentMenuId`, `IsActive`, `HasChild` |
 | `PageDDL` | PageMasters | `MenuId`, `PageUrl`, `IconClass` | `MenuId`, `IsActive` |
+| `SchoolDDL` | Organizations (approved only) | `SchoolCode`, `Address` | `IsActive`, `IsApproved` |
 
 **Response `data`** — `IEnumerable<Dictionary<string, object?>>`
 ```json
@@ -858,6 +859,17 @@ Returns `400 Bad Request` if:
 - `key` is not a registered `DropdownKey` value
 - `extraColumns` contains a column not in the whitelist for that key
 - `filters` contains a key not in the whitelist for that key
+
+---
+
+## Org-Scoped Role Permissions
+
+When a school is approved, the system **automatically copies** all 29 system roles and their `MenuAndPagePermissions` into org-specific rows tagged with that school's `OrgId`.
+
+- **OwnerAdmin** — bypasses all permission checks, always sees everything
+- **All other roles (SuperAdmin, Admin, Teacher, etc.)** — resolved from org-specific permission copies
+- **SuperAdmin and Admin** of an org can toggle (`IsAllowed`) any permission within their own org via `PUT /menu-and-page-permission/org/{orgId}/{id}/{roleId}`
+- Login (`/auth/login`) and switch-school (`/auth/switch-school`) automatically return menus/pages filtered by the user's org permissions
 
 ---
 
@@ -1017,3 +1029,5 @@ The caller must be a member of the target org (via `UserOrganizationMappings`). 
 | DELETE | `/user-management/{id}/roles/{roleId}` | Yes | Remove role from user |
 | PUT | `/user-management/{id}/role-level` | Yes | Upgrade/downgrade between SuperAdmin ↔ Admin (OwnerAdmin) |
 | POST | `/auth/switch-school` | Yes | Switch active school context, returns new token pair |
+| PUT | `/menu-and-page-permission/org/{orgId}/{id}/{roleId}` | Yes | Toggle org-specific permission (SuperAdmin/Admin) |
+| GET | `/menu-and-page-permission/org/{orgId}` | Yes | Get org-specific permissions (filterable by menuId, pageId, roleId) |

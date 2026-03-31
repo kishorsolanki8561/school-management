@@ -6,16 +6,21 @@ internal static class AuthQueries
     /// Returns all active, non-deleted menus ordered by position.
     /// When @IsOwnerAdmin = 0, menus flagged IsUseMenuForOwnerAdmin are excluded.
     /// </summary>
+    /// <summary>
+    /// When @OrgId IS NULL (OwnerAdmin) → uses system-level permissions (mp.OrgId IS NULL).
+    /// When @OrgId IS SET → uses org-specific permissions for this org's role copies.
+    /// </summary>
     public const string GetDynamicMenus = @"
-        SELECT Distinct MM.Id, Name, HasChild, ParentMenuId, Position, IconClass
+        SELECT DISTINCT MM.Id, Name, HasChild, ParentMenuId, Position, IconClass
         FROM   MenuMasters MM
         INNER  JOIN MenuAndPagePermissions mp
                ON  mp.MenuId    = MM.Id
                AND mp.IsDeleted = 0
                AND mp.IsAllowed = 1
+               AND mp.RoleId    IN @RoleIds
+               AND ((@OrgId IS NULL AND mp.OrgId IS NULL) OR mp.OrgId = @OrgId)
         WHERE  mm.IsDeleted = 0
-          AND  mm.IsActive  = 1 AND mp.RoleId    IN @RoleIds
-          --AND  (@IsOwnerAdmin = 1 OR mm.IsUseMenuForOwnerAdmin = 0)
+          AND  mm.IsActive  = 1
         ORDER  BY Position, Name";
 
     /// <summary>
@@ -37,9 +42,9 @@ internal static class AuthQueries
                AND mp.IsDeleted = 0
                AND mp.IsAllowed = 1
                AND mp.RoleId    IN @RoleIds
+               AND ((@OrgId IS NULL AND mp.OrgId IS NULL) OR mp.OrgId = @OrgId)
         WHERE  p.IsDeleted = 0
           AND  p.IsActive  = 1
-          --AND  (@IsOwnerAdmin = 1 OR p.IsUsePageForOwnerAdmin = 0)
         ORDER  BY p.MenuId, p.Name";
 
     /// <summary>
@@ -59,6 +64,7 @@ internal static class AuthQueries
                AND mp.IsDeleted    = 0
                AND mp.IsAllowed    = 1
                AND mp.RoleId       IN @RoleIds
+               AND ((@OrgId IS NULL AND mp.OrgId IS NULL) OR mp.OrgId = @OrgId)
         WHERE  pm.IsDeleted = 0
           AND  pm.IsActive  = 1
         ORDER  BY pm.PageId, pm.Id, mp.ActionId";

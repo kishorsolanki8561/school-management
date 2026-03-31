@@ -289,6 +289,7 @@ await _context.SaveChangesAsync();
 - `GetDropdownAsync` — multiple extra columns (`ParentMenuId`, `HasChild`) → all appear camelCased in response
 - `GetDropdownAsync` — `RolesDDL` with `IsOrgRole` filter (whitelisted) → does not throw
 - `GetDropdownAsync` — `PageDDL` → SQL sent to repo contains `[PageMasters]`
+- `GetDropdownAsync` — `SchoolDDL` → SQL sent to repo contains `[Organizations]` and `IsApproved = 1`
 
 ### FileUploadService
 - OwnerAdmin — always uses `appsettings.json` defaults even when org config exists
@@ -350,6 +351,13 @@ await _context.SaveChangesAsync();
 - ResetPassword — throws on expired token
 - SwitchSchool — returns new token pair with updated OrgId claim
 - SwitchSchool — throws Unauthorized when user is not a member of target org
+
+### MenuAndPagePermissionService (Org-scoped)
+- UpdateOrgPermissionAsync — toggles IsAllowed on org-specific permission row
+- UpdateOrgPermissionAsync — throws when permission not found for given orgId
+- GetOrgPermissionsAsync — returns only permissions for the specified orgId
+- CopySystemRolesAndPermissions (via SchoolService.ApproveAsync) — all 29 system roles copied with OrgId; idempotent (skips already-copied roles)
+- Login after approval — menus/pages resolved from org-specific permissions, not system-level
 
 ### SchoolService
 - RegisterAsync — creates Organization + SchoolApprovalRequest (Pending)

@@ -53,4 +53,25 @@ public sealed class MenuAndPagePermissionController : ControllerBase
         var result = await _permissionService.GetAllAsync(pagination, menuId, pageId, roleId, cancellationToken);
         return Ok(ApiResponse<PagedResult<MenuAndPagePermissionResponse>>.Ok(result, HttpContext.TraceIdentifier));
     }
+
+    /// <summary>Toggle IsAllowed on an org-specific permission (SuperAdmin/Admin of that org).</summary>
+    [HttpPut("org/{orgId:int}/{id:int}/{roleId:int}")]
+    [SwaggerOperation(Summary = "Toggle Org Permission", Tags = new[] { "Master - Permission" })]
+    [ProducesResponseType(typeof(ApiResponse<MenuAndPagePermissionResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateOrgPermission(int orgId, int id, int roleId, CancellationToken cancellationToken)
+    {
+        var result = await _permissionService.UpdateOrgPermissionAsync(id, roleId, orgId, cancellationToken);
+        return Ok(ApiResponse<MenuAndPagePermissionResponse>.Ok(result, HttpContext.TraceIdentifier));
+    }
+
+    /// <summary>Get org-specific permissions (SuperAdmin/Admin of that org).</summary>
+    [HttpGet("org/{orgId:int}")]
+    [SwaggerOperation(Summary = "Get Org Permissions", Tags = new[] { "Master - Permission" })]
+    [ProducesResponseType(typeof(ApiResponse<PagedResult<MenuAndPagePermissionResponse>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetOrgPermissions(int orgId, [FromQuery] PaginationRequest pagination, [FromQuery] int? menuId, [FromQuery] int? pageId, [FromQuery] int? roleId, CancellationToken cancellationToken)
+    {
+        var result = await _permissionService.GetOrgPermissionsAsync(orgId, pagination, menuId, pageId, roleId, cancellationToken);
+        return Ok(ApiResponse<PagedResult<MenuAndPagePermissionResponse>>.Ok(result, HttpContext.TraceIdentifier));
+    }
 }

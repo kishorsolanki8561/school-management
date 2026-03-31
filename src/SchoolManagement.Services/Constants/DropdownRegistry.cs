@@ -84,5 +84,13 @@ internal static class DropdownRegistry
                 BaseCondition:        "IsDeleted = 0 AND IsActive = 1",
                 AllowedExtraColumns:  new[] { "MenuId", "PageUrl", "IconClass" },
                 AllowedFilterColumns: new[] { "MenuId", "IsActive" }),
+
+            [DropdownKey.SchoolDDL] = new(
+                TableName:            "Organizations",
+                NameColumn:           "Name",
+                ValueColumn:          "Id",
+                BaseCondition:        "IsDeleted = 0 AND IsActive = 1 AND IsApproved = 1",
+                AllowedExtraColumns:  new[] { "SchoolCode", "Address" },
+                AllowedFilterColumns: new[] { "IsActive", "IsApproved" }),
         };
 }
